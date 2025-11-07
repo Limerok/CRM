@@ -25,8 +25,14 @@ class Migrator
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(64) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
+            is_super_admin TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $hasSuperAdminColumn = $this->db->fetch("SHOW COLUMNS FROM users LIKE 'is_super_admin'");
+        if (!$hasSuperAdminColumn) {
+            $this->db->query('ALTER TABLE users ADD COLUMN is_super_admin TINYINT(1) NOT NULL DEFAULT 0 AFTER password');
+        }
     }
 
     private function createCategories()

@@ -34,18 +34,6 @@ $db = new Database($config['db']);
 $migrator = new Migrator($db);
 $migrator->migrate();
 
-// Ensure admin user exists
-$adminExists = $db->fetch("SELECT id FROM users WHERE username = :username", array('username' => 'admin'));
-if (!$adminExists) {
-    $db->query(
-        "INSERT INTO users (username, password, created_at) VALUES (:username, :password, NOW())",
-        array(
-            'username' => 'admin',
-            'password' => password_hash('admin', PASSWORD_DEFAULT),
-        )
-    );
-}
-
 function view_path($template) {
     return __DIR__ . '/../admin/view/template/' . $template . '.php';
 }
