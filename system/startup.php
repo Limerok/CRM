@@ -65,3 +65,25 @@ function require_login() {
     }
 }
 
+function get_setting($key, $default = null) {
+    global $db;
+    $row = $db->fetch('SELECT value FROM settings WHERE `key` = :key', array('key' => $key));
+    return $row ? $row['value'] : $default;
+}
+
+function set_setting($key, $value) {
+    global $db;
+    $exists = $db->fetch('SELECT `key` FROM settings WHERE `key` = :key', array('key' => $key));
+    if ($exists) {
+        $db->query('UPDATE settings SET value = :value WHERE `key` = :key', array(
+            'value' => (string)$value,
+            'key' => $key,
+        ));
+    } else {
+        $db->query('INSERT INTO settings (`key`, `value`) VALUES (:key, :value)', array(
+            'key' => $key,
+            'value' => (string)$value,
+        ));
+    }
+}
+

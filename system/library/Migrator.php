@@ -14,6 +14,10 @@ class Migrator
         $this->createCategories();
         $this->createManufacturers();
         $this->createProducts();
+        $this->createCurrencies();
+        $this->createLengthClasses();
+        $this->createWeightClasses();
+        $this->createSettings();
         $this->createSupplies();
         $this->createStock();
         $this->createSales();
@@ -68,9 +72,9 @@ class Migrator
             series VARCHAR(64) DEFAULT NULL,
             manufacturer_id INT DEFAULT NULL,
             purchase_price DECIMAL(15,4) DEFAULT 0,
-            purchase_currency ENUM('RUB','USD','EUR') DEFAULT 'RUB',
+            purchase_currency VARCHAR(3) NOT NULL DEFAULT 'RUB',
             weight DECIMAL(15,4) DEFAULT 0,
-            weight_unit ENUM('kg','g') DEFAULT 'kg',
+            weight_unit VARCHAR(32) NOT NULL DEFAULT 'kg',
             weight_package DECIMAL(15,4) DEFAULT 0,
             length DECIMAL(15,4) DEFAULT 0,
             width DECIMAL(15,4) DEFAULT 0,
@@ -78,7 +82,7 @@ class Migrator
             length_package DECIMAL(15,4) DEFAULT 0,
             width_package DECIMAL(15,4) DEFAULT 0,
             height_package DECIMAL(15,4) DEFAULT 0,
-            length_unit ENUM('mm','cm','m') DEFAULT 'mm',
+            length_unit VARCHAR(32) NOT NULL DEFAULT 'mm',
             category_id INT DEFAULT NULL,
             sort_order INT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,6 +90,113 @@ class Migrator
             FOREIGN KEY (manufacturer_id) REFERENCES manufacturers(id) ON DELETE SET NULL,
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $purchaseCurrencyColumn = $this->db->fetch("SHOW COLUMNS FROM products LIKE 'purchase_currency'");
+        if ($purchaseCurrencyColumn && stripos($purchaseCurrencyColumn['Type'], 'enum') !== false) {
+            $this->db->query("ALTER TABLE products MODIFY purchase_currency VARCHAR(3) NOT NULL DEFAULT 'RUB'");
+        }
+
+        $weightUnitColumn = $this->db->fetch("SHOW COLUMNS FROM products LIKE 'weight_unit'");
+        if ($weightUnitColumn && stripos($weightUnitColumn['Type'], 'enum') !== false) {
+            $this->db->query("ALTER TABLE products MODIFY weight_unit VARCHAR(32) NOT NULL DEFAULT 'kg'");
+        }
+
+        $lengthUnitColumn = $this->db->fetch("SHOW COLUMNS FROM products LIKE 'length_unit'");
+        if ($lengthUnitColumn && stripos($lengthUnitColumn['Type'], 'enum') !== false) {
+            $this->db->query("ALTER TABLE products MODIFY length_unit VARCHAR(32) NOT NULL DEFAULT 'mm'");
+        }
+    }
+
+    private function createCurrencies()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS currencies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            code VARCHAR(3) NOT NULL UNIQUE,
+            value DECIMAL(15,8) NOT NULL DEFAULT 1.00000000,
+            date_modified DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $count = $this->db->fetch('SELECT COUNT(*) AS total FROM currencies');
+        if (!$count || (int)$count['total'] === 0) {
+            $this->db->query("INSERT INTO currencies (name, code, value) VALUES
+                ('Российский рубль', 'RUB', 1.00000000),
+                ('Доллар США', 'USD', 82.00000000),
+                ('Евро', 'EUR', 89.00000000)");
+        }
+    }
+
+    private function createLengthClasses()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS length_classes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            code VARCHAR(32) NOT NULL UNIQUE,
+            value DECIMAL(15,8) NOT NULL DEFAULT 1.00000000,
+            sort_order INT NOT NULL DEFAULT 0,
+            date_modified DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $count = $this->db->fetch('SELECT COUNT(*) AS total FROM length_classes');
+        if (!$count || (int)$count['total'] === 0) {
+            $this->db->query("INSERT INTO length_classes (name, code, value, sort_order) VALUES
+                ('Миллиметр', 'mm', 1.00000000, 1),
+                ('Сантиметр', 'cm', 10.00000000, 2),
+                ('Метр', 'm', 1000.00000000, 3)");
+        }
+    }
+
+    private function createWeightClasses()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS weight_classes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            code VARCHAR(32) NOT NULL UNIQUE,
+            value DECIMAL(15,8) NOT NULL DEFAULT 1.00000000,
+            sort_order INT NOT NULL DEFAULT 0,
+            date_modified DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $count = $this->db->fetch('SELECT COUNT(*) AS total FROM weight_classes');
+        if (!$count || (int)$count['total'] === 0) {
+            $this->db->query("INSERT INTO weight_classes (name, code, value, sort_order) VALUES
+                ('Грамм', 'g', 1.00000000, 1),
+                ('Килограмм', 'kg', 1000.00000000, 2)");
+        }
+    }
+
+    private function createSettings()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS settings (
+            `key` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `value` TEXT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $currency = $this->db->fetch("SELECT id FROM currencies WHERE code = 'RUB' LIMIT 1");
+        if ($currency) {
+            $this->ensureSetting('config_currency_id', $currency['id']);
+        }
+
+        $length = $this->db->fetch("SELECT id FROM length_classes WHERE code = 'mm' LIMIT 1");
+        if ($length) {
+            $this->ensureSetting('config_length_class_id', $length['id']);
+        }
+
+        $weight = $this->db->fetch("SELECT id FROM weight_classes WHERE code = 'kg' LIMIT 1");
+        if ($weight) {
+            $this->ensureSetting('config_weight_class_id', $weight['id']);
+        }
+    }
+
+    private function ensureSetting($key, $value)
+    {
+        $exists = $this->db->fetch('SELECT `key` FROM settings WHERE `key` = :key', array('key' => $key));
+        if (!$exists) {
+            $this->db->query('INSERT INTO settings (`key`, `value`) VALUES (:key, :value)', array(
+                'key' => $key,
+                'value' => (string)$value,
+            ));
+        }
     }
 
     private function createSupplies()
