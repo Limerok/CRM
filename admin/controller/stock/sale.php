@@ -72,9 +72,48 @@ class ControllerStockSale extends Controller
             }
         }
 
+        $recentSales = $this->db->fetchAll('SELECT s.*, COUNT(i.id) AS items_count, COALESCE(SUM(i.quantity), 0) AS total_quantity
+            FROM sales s
+            LEFT JOIN sale_items i ON s.id = i.sale_id
+            GROUP BY s.id
+            ORDER BY s.sale_date DESC, s.id DESC
+            LIMIT 10');
+
         $this->render('stock/sale_form', array(
             'error' => isset($error) ? $error : null,
             'success' => isset($success) ? $success : null,
+            'recent_sales' => $recentSales,
+        ));
+    }
+
+    public function view()
+    {
+        require_login();
+
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if (!$id) {
+            redirect(admin_url('stock/sale'));
+        }
+
+        $sale = $this->db->fetch('SELECT * FROM sales WHERE id = :id', array('id' => $id));
+        if (!$sale) {
+            redirect(admin_url('stock/sale'));
+        }
+
+        $items = $this->db->fetchAll('SELECT si.*, p.name, p.model FROM sale_items si
+            LEFT JOIN products p ON si.product_id = p.id
+            WHERE si.sale_id = :sale_id
+            ORDER BY p.name ASC', array('sale_id' => $id));
+
+        $totalQuantity = 0;
+        foreach ($items as $item) {
+            $totalQuantity += (int)$item['quantity'];
+        }
+
+        $this->render('stock/sale_view', array(
+            'sale' => $sale,
+            'items' => $items,
+            'total_quantity' => $totalQuantity,
         ));
     }
 }

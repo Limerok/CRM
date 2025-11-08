@@ -55,10 +55,42 @@ class ControllerCatalogManufacturer extends Controller
     public function delete()
     {
         require_login();
-        $id = isset($_GET['id']) ? $_GET['id'] : null;
-        if ($id) {
-            $this->db->query('DELETE FROM manufacturers WHERE id = :id', array('id' => $id));
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $selected = isset($_POST['selected']) ? (array)$_POST['selected'] : array();
+            $ids = array();
+
+            foreach ($selected as $value) {
+                $id = (int)$value;
+                if ($id > 0) {
+                    $ids[$id] = $id;
+                }
+            }
+
+            if ($ids) {
+                $placeholders = array();
+                $params = array();
+                $index = 0;
+
+                foreach ($ids as $id) {
+                    $placeholder = ':id' . $index;
+                    $placeholders[] = $placeholder;
+                    $params['id' . $index] = $id;
+                    $index++;
+                }
+
+                $this->db->query(
+                    'DELETE FROM manufacturers WHERE id IN (' . implode(', ', $placeholders) . ')',
+                    $params
+                );
+            }
+        } else {
+            $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+            if ($id) {
+                $this->db->query('DELETE FROM manufacturers WHERE id = :id', array('id' => $id));
+            }
         }
+
         redirect(admin_url('catalog/manufacturer'));
     }
 }

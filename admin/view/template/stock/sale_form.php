@@ -39,6 +39,43 @@
                 <tbody></tbody>
             </table>
         </div>
+        <div class="mt-4">
+            <h5 class="mb-3">Последние продажи</h5>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Дата продажи</th>
+                            <th>Позиций</th>
+                            <th>Всего товаров</th>
+                            <th>Создано</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (!empty($recent_sales)): ?>
+                        <?php foreach ($recent_sales as $saleItem): ?>
+                            <tr>
+                                <td><?= (int)$saleItem['id']; ?></td>
+                                <td><?= htmlspecialchars($saleItem['sale_date']); ?></td>
+                                <td><?= (int)$saleItem['items_count']; ?></td>
+                                <td><?= (int)$saleItem['total_quantity']; ?></td>
+                                <td><?= htmlspecialchars($saleItem['created_at']); ?></td>
+                                <td class="text-end">
+                                    <a href="<?= admin_url('stock/sale', array('action' => 'view', 'id' => $saleItem['id'])); ?>" class="btn btn-sm btn-outline-secondary">Подробнее</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" class="text-center">Продажи ещё не зафиксированы</td>
+                        </tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <div class="text-end">
             <button type="submit" class="btn btn-success">Сохранить продажу</button>
         </div>

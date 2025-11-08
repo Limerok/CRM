@@ -1,5 +1,5 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3">Создание поставки</h1>
+    <h1 class="h3"><?= isset($page_title) ? htmlspecialchars($page_title) : 'Создание поставки'; ?></h1>
     <a href="<?= admin_url('stock/supply', array('action' => 'history')); ?>" class="btn btn-secondary">История поставок</a>
 </div>
 <div class="card shadow-sm p-4">
@@ -10,7 +10,7 @@
         <div class="row g-3 align-items-end mb-4">
             <div class="col-md-3">
                 <label class="form-label">Дата поставки</label>
-                <input type="date" name="supply_date" class="form-control" value="<?= date('Y-m-d'); ?>">
+                <input type="date" name="supply_date" class="form-control" value="<?= htmlspecialchars(isset($supply['supply_date']) ? $supply['supply_date'] : date('Y-m-d')); ?>">
             </div>
             <div class="col-md-5 position-relative">
                 <label class="form-label">Поиск товара</label>
@@ -34,11 +34,28 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                <?php if (!empty($form_items)): ?>
+                    <?php foreach ($form_items as $item): ?>
+                        <tr>
+                            <td>
+                                <?= htmlspecialchars($item['name']); ?> (<?= htmlspecialchars($item['model']); ?>)
+                                <input type="hidden" name="product_ids[]" value="<?= (int)$item['product_id']; ?>">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control" name="quantities[]" value="<?= (int)$item['quantity']; ?>" min="1" required>
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-x"></i></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
             </table>
         </div>
         <div class="text-end">
-            <button type="submit" class="btn btn-success">Сохранить поставку</button>
+            <button type="submit" class="btn btn-success"><?= isset($submit_label) ? htmlspecialchars($submit_label) : 'Сохранить поставку'; ?></button>
         </div>
     </form>
 </div>

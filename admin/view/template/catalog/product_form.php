@@ -55,63 +55,77 @@
                 <?php endif; ?>
             </select>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Вес товара</label>
-            <input type="number" step="0.001" name="weight" class="form-control" value="<?= htmlspecialchars(isset($product['weight']) ? $product['weight'] : '0'); ?>">
+    </div>
+    <div class="mt-4">
+        <h5 class="mb-3">Вес</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Вес товара</label>
+                <input type="number" step="0.001" name="weight" class="form-control" value="<?= htmlspecialchars(isset($product['weight']) ? $product['weight'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Вес в упаковке</label>
+                <input type="number" step="0.001" name="weight_package" class="form-control" value="<?= htmlspecialchars(isset($product['weight_package']) ? $product['weight_package'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Единица веса</label>
+                <?php $selectedWeight = isset($product['weight_unit']) && $product['weight_unit'] !== '' ? $product['weight_unit'] : $default_weight_code; ?>
+                <select name="weight_unit" class="form-select">
+                    <?php if ($weight_classes): ?>
+                        <?php foreach ($weight_classes as $weightClass): ?>
+                            <option value="<?= htmlspecialchars($weightClass['code']); ?>" <?= ($selectedWeight === $weightClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($weightClass['name']); ?> (<?= htmlspecialchars($weightClass['code']); ?>)</option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <option value="<?= htmlspecialchars($selectedWeight); ?>" selected><?= htmlspecialchars($selectedWeight); ?></option>
+                    <?php endif; ?>
+                </select>
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Единица веса</label>
-            <?php $selectedWeight = isset($product['weight_unit']) && $product['weight_unit'] !== '' ? $product['weight_unit'] : $default_weight_code; ?>
-            <select name="weight_unit" class="form-select">
-                <?php if ($weight_classes): ?>
-                    <?php foreach ($weight_classes as $weightClass): ?>
-                        <option value="<?= htmlspecialchars($weightClass['code']); ?>" <?= ($selectedWeight === $weightClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($weightClass['name']); ?> (<?= htmlspecialchars($weightClass['code']); ?>)</option>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <option value="<?= htmlspecialchars($selectedWeight); ?>" selected><?= htmlspecialchars($selectedWeight); ?></option>
-                <?php endif; ?>
-            </select>
+    </div>
+    <div class="mt-4">
+        <h5 class="mb-3">Габариты</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Габариты (Ш)</label>
+                <input type="number" step="0.1" name="width" class="form-control" value="<?= htmlspecialchars(isset($product['width']) ? $product['width'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Габариты (В)</label>
+                <input type="number" step="0.1" name="height" class="form-control" value="<?= htmlspecialchars(isset($product['height']) ? $product['height'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Габариты (Г)</label>
+                <input type="number" step="0.1" name="length" class="form-control" value="<?= htmlspecialchars(isset($product['length']) ? $product['length'] : '0'); ?>">
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Вес в упаковке</label>
-            <input type="number" step="0.001" name="weight_package" class="form-control" value="<?= htmlspecialchars(isset($product['weight_package']) ? $product['weight_package'] : '0'); ?>">
+        <div class="row g-3 mt-1">
+            <div class="col-md-4">
+                <label class="form-label">Габариты в упаковке (Ш)</label>
+                <input type="number" step="0.1" name="width_package" class="form-control" value="<?= htmlspecialchars(isset($product['width_package']) ? $product['width_package'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Габариты в упаковке (В)</label>
+                <input type="number" step="0.1" name="height_package" class="form-control" value="<?= htmlspecialchars(isset($product['height_package']) ? $product['height_package'] : '0'); ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Габариты в упаковке (Г)</label>
+                <input type="number" step="0.1" name="length_package" class="form-control" value="<?= htmlspecialchars(isset($product['length_package']) ? $product['length_package'] : '0'); ?>">
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Единица длины</label>
-            <?php $selectedLength = isset($product['length_unit']) && $product['length_unit'] !== '' ? $product['length_unit'] : $default_length_code; ?>
-            <select name="length_unit" class="form-select">
-                <?php if ($length_classes): ?>
-                    <?php foreach ($length_classes as $lengthClass): ?>
-                        <option value="<?= htmlspecialchars($lengthClass['code']); ?>" <?= ($selectedLength === $lengthClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($lengthClass['name']); ?> (<?= htmlspecialchars($lengthClass['code']); ?>)</option>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <option value="<?= htmlspecialchars($selectedLength); ?>" selected><?= htmlspecialchars($selectedLength); ?></option>
-                <?php endif; ?>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты (Ш)</label>
-            <input type="number" step="0.1" name="width" class="form-control" value="<?= htmlspecialchars(isset($product['width']) ? $product['width'] : '0'); ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты (В)</label>
-            <input type="number" step="0.1" name="height" class="form-control" value="<?= htmlspecialchars(isset($product['height']) ? $product['height'] : '0'); ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты (Г)</label>
-            <input type="number" step="0.1" name="length" class="form-control" value="<?= htmlspecialchars(isset($product['length']) ? $product['length'] : '0'); ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты в упаковке (Ш)</label>
-            <input type="number" step="0.1" name="width_package" class="form-control" value="<?= htmlspecialchars(isset($product['width_package']) ? $product['width_package'] : '0'); ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты в упаковке (В)</label>
-            <input type="number" step="0.1" name="height_package" class="form-control" value="<?= htmlspecialchars(isset($product['height_package']) ? $product['height_package'] : '0'); ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Габариты в упаковке (Г)</label>
-            <input type="number" step="0.1" name="length_package" class="form-control" value="<?= htmlspecialchars(isset($product['length_package']) ? $product['length_package'] : '0'); ?>">
+        <div class="row g-3 mt-1">
+            <div class="col-md-4">
+                <label class="form-label">Единица длины</label>
+                <?php $selectedLength = isset($product['length_unit']) && $product['length_unit'] !== '' ? $product['length_unit'] : $default_length_code; ?>
+                <select name="length_unit" class="form-select">
+                    <?php if ($length_classes): ?>
+                        <?php foreach ($length_classes as $lengthClass): ?>
+                            <option value="<?= htmlspecialchars($lengthClass['code']); ?>" <?= ($selectedLength === $lengthClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($lengthClass['name']); ?> (<?= htmlspecialchars($lengthClass['code']); ?>)</option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <option value="<?= htmlspecialchars($selectedLength); ?>" selected><?= htmlspecialchars($selectedLength); ?></option>
+                    <?php endif; ?>
+                </select>
+            </div>
         </div>
     </div>
     <div class="mt-4 text-end">
