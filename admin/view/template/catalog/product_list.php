@@ -1,6 +1,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Товары</h1>
-    <a href="<?= admin_url('catalog/product', array('action' => 'form')); ?>" class="btn btn-primary"><i class="bi bi-plus"></i> Добавить товар</a>
+    <div class="d-flex gap-2">
+        <a href="<?= admin_url('catalog/product', array('action' => 'form')); ?>" class="btn btn-primary"><i class="bi bi-plus"></i> Добавить товар</a>
+        <button type="submit" form="product-bulk-form" class="btn btn-danger" id="product-bulk-delete" disabled>
+            <i class="bi bi-trash"></i> Удалить выбранные
+        </button>
+    </div>
 </div>
 
 <div class="card shadow-sm mb-4">
@@ -78,11 +83,14 @@ $sortIcon = function ($column) use ($sort, $order) {
 };
 ?>
 
-<div class="card shadow-sm">
+<form method="post" action="<?= admin_url('catalog/product', array('action' => 'delete')); ?>" id="product-bulk-form" class="card shadow-sm" onsubmit="return confirm('Удалить выбранные товары?');">
     <div class="table-responsive">
         <table class="table table-striped table-hover mb-0">
             <thead>
                 <tr>
+                    <th style="width: 36px;">
+                        <input type="checkbox" id="product-select-all" class="form-check-input">
+                    </th>
                     <th>#</th>
                     <th><a class="text-decoration-none" href="<?= admin_url('catalog/product', array_merge($url_filters, array('sort' => 'name', 'order' => $toggleOrder('name')))); ?>">Наименование <?= $sortIcon('name'); ?></a></th>
                     <th><a class="text-decoration-none" href="<?= admin_url('catalog/product', array_merge($url_filters, array('sort' => 'model', 'order' => $toggleOrder('model')))); ?>">Модель <?= $sortIcon('model'); ?></a></th>
@@ -99,6 +107,9 @@ $sortIcon = function ($column) use ($sort, $order) {
             <?php if ($products): ?>
                 <?php foreach ($products as $product): ?>
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input product-bulk-checkbox" name="selected[]" value="<?= (int)$product['id']; ?>">
+                        </td>
                         <td><?= (int)$product['id']; ?></td>
                         <td><?= htmlspecialchars($product['name']); ?></td>
                         <td><?= htmlspecialchars($product['model']); ?></td>
@@ -120,4 +131,31 @@ $sortIcon = function ($column) use ($sort, $order) {
             </tbody>
         </table>
     </div>
-</div>
+</form>
+<script>
+(() => {
+    const selectAll = document.getElementById('product-select-all');
+    const checkboxes = Array.from(document.querySelectorAll('.product-bulk-checkbox'));
+    const bulkDeleteButton = document.getElementById('product-bulk-delete');
+
+    const updateBulkState = () => {
+        const anyChecked = checkboxes.some((checkbox) => checkbox.checked);
+        if (bulkDeleteButton) {
+            bulkDeleteButton.disabled = !anyChecked;
+        }
+    };
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = selectAll.checked;
+            });
+            updateBulkState();
+        });
+    }
+
+    checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', updateBulkState);
+    });
+})();
+</script>
