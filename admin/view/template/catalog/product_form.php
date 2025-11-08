@@ -44,10 +44,15 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Валюта закупки</label>
+            <?php $selectedCurrency = isset($product['purchase_currency']) && $product['purchase_currency'] !== '' ? $product['purchase_currency'] : $default_currency_code; ?>
             <select name="purchase_currency" class="form-select">
-                <?php foreach (array('RUB' => 'Рубли', 'USD' => 'Доллары', 'EUR' => 'Евро') as $value => $label): ?>
-                    <option value="<?= $value; ?>" <?= ((isset($product['purchase_currency']) ? $product['purchase_currency'] : 'RUB') === $value) ? 'selected' : ''; ?>><?= $label; ?></option>
-                <?php endforeach; ?>
+                <?php if ($currencies): ?>
+                    <?php foreach ($currencies as $currency): ?>
+                        <option value="<?= htmlspecialchars($currency['code']); ?>" <?= ($selectedCurrency === $currency['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($currency['name']); ?> (<?= htmlspecialchars($currency['code']); ?>)</option>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <option value="<?= htmlspecialchars($selectedCurrency); ?>" selected><?= htmlspecialchars($selectedCurrency); ?></option>
+                <?php endif; ?>
             </select>
         </div>
         <div class="col-md-3">
@@ -56,10 +61,15 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Единица веса</label>
+            <?php $selectedWeight = isset($product['weight_unit']) && $product['weight_unit'] !== '' ? $product['weight_unit'] : $default_weight_code; ?>
             <select name="weight_unit" class="form-select">
-                <?php foreach (array('kg' => 'Килограммы', 'g' => 'Граммы') as $value => $label): ?>
-                    <option value="<?= $value; ?>" <?= ((isset($product['weight_unit']) ? $product['weight_unit'] : 'kg') === $value) ? 'selected' : ''; ?>><?= $label; ?></option>
-                <?php endforeach; ?>
+                <?php if ($weight_classes): ?>
+                    <?php foreach ($weight_classes as $weightClass): ?>
+                        <option value="<?= htmlspecialchars($weightClass['code']); ?>" <?= ($selectedWeight === $weightClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($weightClass['name']); ?> (<?= htmlspecialchars($weightClass['code']); ?>)</option>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <option value="<?= htmlspecialchars($selectedWeight); ?>" selected><?= htmlspecialchars($selectedWeight); ?></option>
+                <?php endif; ?>
             </select>
         </div>
         <div class="col-md-3">
@@ -68,10 +78,15 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Единица длины</label>
+            <?php $selectedLength = isset($product['length_unit']) && $product['length_unit'] !== '' ? $product['length_unit'] : $default_length_code; ?>
             <select name="length_unit" class="form-select">
-                <?php foreach (array('mm' => 'Миллиметры', 'cm' => 'Сантиметры', 'm' => 'Метры') as $value => $label): ?>
-                    <option value="<?= $value; ?>" <?= ((isset($product['length_unit']) ? $product['length_unit'] : 'mm') === $value) ? 'selected' : ''; ?>><?= $label; ?></option>
-                <?php endforeach; ?>
+                <?php if ($length_classes): ?>
+                    <?php foreach ($length_classes as $lengthClass): ?>
+                        <option value="<?= htmlspecialchars($lengthClass['code']); ?>" <?= ($selectedLength === $lengthClass['code']) ? 'selected' : ''; ?>><?= htmlspecialchars($lengthClass['name']); ?> (<?= htmlspecialchars($lengthClass['code']); ?>)</option>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <option value="<?= htmlspecialchars($selectedLength); ?>" selected><?= htmlspecialchars($selectedLength); ?></option>
+                <?php endif; ?>
             </select>
         </div>
         <div class="col-md-3">
