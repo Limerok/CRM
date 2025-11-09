@@ -1,3 +1,5 @@
+<?php $currentTab = (isset($active_tab) && $active_tab === 'statuses') ? 'statuses' : 'localization'; ?>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Настройки</h1>
 </div>
@@ -20,14 +22,18 @@
     <div class="card-header border-0 pb-0">
         <ul class="nav nav-tabs card-header-tabs" id="settingTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-localization-tab" data-bs-toggle="tab" data-bs-target="#tab-localization" type="button" role="tab">Локализация</button>
+                <button class="nav-link<?= $currentTab === 'localization' ? ' active' : ''; ?>" id="tab-localization-tab" data-bs-toggle="tab" data-bs-target="#tab-localization" type="button" role="tab">Локализация</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link<?= $currentTab === 'statuses' ? ' active' : ''; ?>" id="tab-statuses-tab" data-bs-toggle="tab" data-bs-target="#tab-statuses" type="button" role="tab">Статусы</button>
             </li>
         </ul>
     </div>
     <div class="card-body">
         <div class="tab-content" id="settingTabsContent">
-            <div class="tab-pane fade show active" id="tab-localization" role="tabpanel" aria-labelledby="tab-localization-tab">
+            <div class="tab-pane fade<?= $currentTab === 'localization' ? ' show active' : ''; ?>" id="tab-localization" role="tabpanel" aria-labelledby="tab-localization-tab">
                 <form method="post" action="<?= admin_url('system/setting'); ?>" class="row g-4">
+                    <input type="hidden" name="form" value="localization">
                     <div class="col-md-4">
                         <label class="form-label">Валюта магазина</label>
                         <select name="config_currency_id" class="form-select" required>
@@ -54,6 +60,26 @@
                                 <option value="<?= (int)$weightClass['id']; ?>" <?= ($config_weight_class_id == $weightClass['id']) ? 'selected' : ''; ?>><?= htmlspecialchars($weightClass['name']); ?> (<?= htmlspecialchars($weightClass['code']); ?>)</option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+            <div class="tab-pane fade<?= $currentTab === 'statuses' ? ' show active' : ''; ?>" id="tab-statuses" role="tabpanel" aria-labelledby="tab-statuses-tab">
+                <form method="post" action="<?= admin_url('system/setting'); ?>" class="row g-4">
+                    <input type="hidden" name="form" value="statuses">
+                    <div class="col-md-6">
+                        <label class="form-label">Статус заказа по умолчанию</label>
+                        <select name="default_order_status_id" class="form-select">
+                            <option value="0">- Не выбран -</option>
+                            <?php foreach ($order_statuses as $status): ?>
+                                <option value="<?= (int)$status['id']; ?>" <?= ($default_order_status_id == $status['id']) ? 'selected' : ''; ?>><?= htmlspecialchars($status['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">Управление списком статусов доступно на странице <a href="<?= admin_url('system/status'); ?>">"Статусы заказов"</a>.</div>
                     </div>
                     <div class="col-12 text-end">
                         <button type="submit" class="btn btn-primary">Сохранить</button>

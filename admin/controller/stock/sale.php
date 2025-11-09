@@ -8,6 +8,10 @@ class ControllerStockSale extends Controller
         $sources = $this->fetchSources();
         $sourceMap = $this->mapSources($sources);
 
+        $orderStatuses = $this->fetchOrderStatuses();
+        $defaultStatusId = (int)get_setting('config_default_order_status_id', 0);
+        $defaultStatusName = $this->findStatusNameById($orderStatuses, $defaultStatusId);
+
         $formItems = array();
         $errors = array();
         $success = isset($_GET['success']) ? $_GET['success'] : null;
@@ -77,6 +81,9 @@ class ControllerStockSale extends Controller
             'recent_sales' => $recentSales,
             'form_items' => $formItems,
             'sources' => $sources,
+            'statuses' => $orderStatuses,
+            'default_status_id' => $defaultStatusId,
+            'default_status_name' => $defaultStatusName,
             'page_title' => 'Продажа со склада',
             'submit_label' => 'Сохранить продажу',
             'form_action' => admin_url('stock/sale'),
@@ -104,6 +111,10 @@ class ControllerStockSale extends Controller
             LEFT JOIN products p ON si.product_id = p.id
             WHERE si.sale_id = :sale_id
             ORDER BY si.id ASC', array('sale_id' => $id));
+
+        $orderStatuses = $this->fetchOrderStatuses();
+        $defaultStatusId = (int)get_setting('config_default_order_status_id', 0);
+        $defaultStatusName = $this->findStatusNameById($orderStatuses, $defaultStatusId);
 
         $formItems = array();
         $existingCounts = array();
@@ -204,6 +215,9 @@ class ControllerStockSale extends Controller
             'recent_sales' => null,
             'form_items' => $formItems,
             'sources' => $sources,
+            'statuses' => $orderStatuses,
+            'default_status_id' => $defaultStatusId,
+            'default_status_name' => $defaultStatusName,
             'page_title' => 'Редактирование продажи #' . $id,
             'submit_label' => 'Обновить продажу',
             'form_action' => admin_url('stock/sale', array('action' => 'edit', 'id' => $id)),
@@ -251,6 +265,22 @@ class ControllerStockSale extends Controller
             $map[(int)$source['id']] = $source;
         }
         return $map;
+    }
+
+    private function fetchOrderStatuses()
+    {
+        return $this->db->fetchAll('SELECT id, name FROM order_statuses ORDER BY name ASC');
+    }
+
+    private function findStatusNameById(array $statuses, $id)
+    {
+        foreach ($statuses as $status) {
+            if ((int)$status['id'] === (int)$id) {
+                return $status['name'];
+            }
+        }
+
+        return '';
     }
 
     private function collectSaleItemsFromRequest(array $sourceMap)

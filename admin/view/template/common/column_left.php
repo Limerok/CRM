@@ -4,8 +4,8 @@ $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
 $catalogRoutes = array('catalog/product', 'catalog/category', 'catalog/manufacturer');
 $stockRoutes = array('stock/supply', 'stock/warehouse', 'stock/sale');
-$systemRoutes = array('system/setting', 'system/source', 'system/currency', 'system/length', 'system/weight');
-$systemLocalizationRoutes = array('system/currency', 'system/length', 'system/weight');
+$systemRoutes = array('system/setting', 'system/source', 'system/status', 'system/currency', 'system/length', 'system/weight');
+$systemLocalizationRoutes = array('system/currency', 'system/length', 'system/weight', 'system/status');
 
 $catalogActive = in_array($route, $catalogRoutes, true);
 $stockActive = in_array($route, $stockRoutes, true);
@@ -51,6 +51,7 @@ $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
                                         <li class="nav-item"><a class="nav-link<?= ($route === 'system/currency') ? ' active' : ''; ?>" href="<?= admin_url('system/currency'); ?>">Валюты</a></li>
                                         <li class="nav-item"><a class="nav-link<?= ($route === 'system/length') ? ' active' : ''; ?>" href="<?= admin_url('system/length'); ?>">Единицы длины</a></li>
                                         <li class="nav-item"><a class="nav-link<?= ($route === 'system/weight') ? ' active' : ''; ?>" href="<?= admin_url('system/weight'); ?>">Единицы веса</a></li>
+                                        <li class="nav-item"><a class="nav-link<?= ($route === 'system/status') ? ' active' : ''; ?>" href="<?= admin_url('system/status'); ?>">Статусы заказов</a></li>
                                     </ul>
                                 </div>
                             </li>
