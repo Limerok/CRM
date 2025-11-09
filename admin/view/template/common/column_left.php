@@ -4,7 +4,7 @@ $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
 $catalogRoutes = array('catalog/product', 'catalog/category', 'catalog/manufacturer');
 $stockRoutes = array('stock/supply', 'stock/warehouse', 'stock/sale');
-$systemRoutes = array('system/setting', 'system/currency', 'system/length', 'system/weight');
+$systemRoutes = array('system/setting', 'system/source', 'system/currency', 'system/length', 'system/weight');
 $systemLocalizationRoutes = array('system/currency', 'system/length', 'system/weight');
 
 $catalogActive = in_array($route, $catalogRoutes, true);
@@ -43,6 +43,7 @@ $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
                     <div class="collapse<?= $systemActive ? ' show' : ''; ?>" id="systemMenu">
                         <ul class="nav flex-column ms-3">
                             <li class="nav-item"><a class="nav-link<?= ($route === 'system/setting') ? ' active' : ''; ?>" href="<?= admin_url('system/setting'); ?>">Настройки</a></li>
+                            <li class="nav-item"><a class="nav-link<?= ($route === 'system/source') ? ' active' : ''; ?>" href="<?= admin_url('system/source'); ?>">Источники заказов</a></li>
                             <li class="nav-item">
                                 <a class="nav-link<?= $systemLocalizationActive ? ' active' : ''; ?>" href="#systemLocalizationMenu" data-bs-toggle="collapse" role="button" aria-expanded="<?= $systemLocalizationActive ? 'true' : 'false'; ?>" aria-controls="systemLocalizationMenu">Локализация</a>
                                 <div class="collapse<?= $systemLocalizationActive ? ' show' : ''; ?>" id="systemLocalizationMenu">

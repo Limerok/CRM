@@ -20,6 +20,7 @@ class Migrator
         $this->createSettings();
         $this->createSupplies();
         $this->createStock();
+        $this->createOrderSources();
         $this->createSales();
     }
 
@@ -226,6 +227,16 @@ class Migrator
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
+    private function createOrderSources()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS order_sources (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
     private function createSales()
     {
         $this->db->query("CREATE TABLE IF NOT EXISTS sales (
@@ -238,9 +249,64 @@ class Migrator
             id INT AUTO_INCREMENT PRIMARY KEY,
             sale_id INT NOT NULL,
             product_id INT NOT NULL,
-            quantity INT NOT NULL,
+            order_date DATE DEFAULT NULL,
+            source_id INT DEFAULT NULL,
+            order_status VARCHAR(128) DEFAULT NULL,
+            task_number VARCHAR(64) DEFAULT NULL,
+            order_number VARCHAR(64) DEFAULT NULL,
             FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $orderDateColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'order_date'");
+        if (!$orderDateColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN order_date DATE DEFAULT NULL AFTER product_id');
+        }
+
+        $sourceColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'source_id'");
+        if (!$sourceColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN source_id INT DEFAULT NULL AFTER order_date');
+        }
+
+        $orderStatusColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'order_status'");
+        if (!$orderStatusColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN order_status VARCHAR(128) DEFAULT NULL AFTER source_id');
+        }
+
+        $taskNumberColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'task_number'");
+        if (!$taskNumberColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN task_number VARCHAR(64) DEFAULT NULL AFTER order_status');
+        }
+
+        $orderNumberColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'order_number'");
+        if (!$orderNumberColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN order_number VARCHAR(64) DEFAULT NULL AFTER task_number');
+        }
+
+        $quantityColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'quantity'");
+        if ($quantityColumn) {
+            $this->db->query('ALTER TABLE sale_items DROP COLUMN quantity');
+        }
+
+        $taskNumberIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'task_number_unique'");
+        if (!$taskNumberIndex) {
+            $this->db->query('ALTER TABLE sale_items ADD UNIQUE KEY task_number_unique (task_number)');
+        }
+
+        $orderNumberIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'order_number_unique'");
+        if (!$orderNumberIndex) {
+            $this->db->query('ALTER TABLE sale_items ADD UNIQUE KEY order_number_unique (order_number)');
+        }
+
+        $sourceIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'source_id'");
+        if (!$sourceIndex) {
+            $this->db->query('ALTER TABLE sale_items ADD KEY source_id (source_id)');
+        }
+
+        $existingSourceFk = $this->db->fetch("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_items' AND COLUMN_NAME = 'source_id' AND REFERENCED_TABLE_NAME = 'order_sources'");
+        if (!$existingSourceFk && $sourceColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD CONSTRAINT sale_items_source_fk FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE SET NULL');
+        }
     }
 }
