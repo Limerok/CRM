@@ -20,6 +20,10 @@
     <?php if (!empty($success)): ?>
         <div class="alert alert-success"><?= htmlspecialchars($success); ?></div>
     <?php endif; ?>
+    <?php
+        $statuses = isset($statuses) && is_array($statuses) ? $statuses : array();
+        $defaultStatusName = isset($default_status_name) ? $default_status_name : '';
+    ?>
     <form method="post" action="<?= htmlspecialchars(isset($form_action) ? $form_action : admin_url('stock/sale')); ?>" id="sale-form">
         <div class="table-responsive mb-4">
             <table class="table table-bordered align-middle" id="sale-items">
@@ -37,6 +41,10 @@
                 <tbody>
                 <?php if (!empty($form_items)): ?>
                     <?php foreach ($form_items as $item): ?>
+                        <?php
+                            $statusValue = isset($item['order_status']) ? (string)$item['order_status'] : '';
+                            $statusMatched = false;
+                        ?>
                         <tr>
                             <td>
                                 <?= htmlspecialchars($item['product_name']); ?><?php if (!empty($item['product_model'])): ?> (<?= htmlspecialchars($item['product_model']); ?>)<?php endif; ?>
@@ -54,7 +62,21 @@
                                     <?php endif; ?>
                                 </select>
                             </td>
-                            <td><input type="text" class="form-control" name="order_statuses[]" value="<?= htmlspecialchars(isset($item['order_status']) ? $item['order_status'] : ''); ?>" placeholder="Введите статус"></td>
+                            <td>
+                                <select name="order_statuses[]" class="form-select">
+                                    <option value="">Не выбрано</option>
+                                    <?php if (!empty($statuses)): ?>
+                                        <?php foreach ($statuses as $status): ?>
+                                            <?php $isSelectedStatus = ($statusValue !== '' && $statusValue === $status['name']); ?>
+                                            <?php if ($isSelectedStatus) { $statusMatched = true; } ?>
+                                            <option value="<?= htmlspecialchars($status['name']); ?>"<?= $isSelectedStatus ? ' selected' : ''; ?>><?= htmlspecialchars($status['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <?php if ($statusValue !== '' && !$statusMatched): ?>
+                                        <option value="<?= htmlspecialchars($statusValue); ?>" selected><?= htmlspecialchars($statusValue); ?></option>
+                                    <?php endif; ?>
+                                </select>
+                            </td>
                             <td><input type="text" class="form-control" name="task_numbers[]" value="<?= htmlspecialchars(isset($item['task_number']) ? $item['task_number'] : ''); ?>" placeholder="Введите № задания"></td>
                             <td><input type="text" class="form-control" name="order_numbers[]" value="<?= htmlspecialchars(isset($item['order_number']) ? $item['order_number'] : ''); ?>" placeholder="Введите № заказа"></td>
                             <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button></td>
@@ -62,33 +84,57 @@
                     <?php endforeach; ?>
                 <?php endif; ?>
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <div class="position-relative">
-                                <input type="hidden" id="sale-new-product-id">
-                                <input type="text" id="sale-product-search" class="form-control" placeholder="Введите название или модель">
-                                <div class="list-group position-absolute w-100" id="sale-product-suggestions" style="z-index: 1000;"></div>
-                            </div>
-                        </td>
-                        <td><input type="date" id="sale-new-order-date" class="form-control" value="<?= date('Y-m-d'); ?>"></td>
-                        <td>
-                            <select id="sale-new-source" class="form-select">
-                                <option value="">Не выбрано</option>
-                                <?php if (!empty($sources)): ?>
-                                    <?php foreach ($sources as $source): ?>
-                                        <option value="<?= (int)$source['id']; ?>"><?= htmlspecialchars($source['name']); ?></option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        </td>
-                        <td><input type="text" id="sale-new-status" class="form-control" placeholder="Статус заказа"></td>
-                        <td><input type="text" id="sale-new-task" class="form-control" placeholder="№ задания"></td>
-                        <td><input type="text" id="sale-new-order" class="form-control" placeholder="№ заказа"></td>
-                        <td class="text-end"><button type="button" class="btn btn-primary" id="sale-add-product"><i class="bi bi-plus"></i> Добавить</button></td>
-                    </tr>
-                </tfoot>
             </table>
+        </div>
+        <div class="bg-light border rounded p-3 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">Товар</label>
+                    <div class="position-relative">
+                        <input type="hidden" id="sale-new-product-id">
+                        <input type="text" id="sale-product-search" class="form-control" placeholder="Введите название или модель">
+                        <div class="list-group position-absolute w-100" id="sale-product-suggestions" style="z-index: 1000;"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">Дата заказа</label>
+                    <input type="date" id="sale-new-order-date" class="form-control" value="<?= date('Y-m-d'); ?>">
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">Источник</label>
+                    <select id="sale-new-source" class="form-select">
+                        <option value="">Не выбрано</option>
+                        <?php if (!empty($sources)): ?>
+                            <?php foreach ($sources as $source): ?>
+                                <option value="<?= (int)$source['id']; ?>"><?= htmlspecialchars($source['name']); ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">Статус заказа</label>
+                    <select id="sale-new-status" class="form-select">
+                        <option value="">Не выбрано</option>
+                        <?php if (!empty($statuses)): ?>
+                            <?php foreach ($statuses as $status): ?>
+                                <option value="<?= htmlspecialchars($status['name']); ?>"<?= ($defaultStatusName !== '' && $defaultStatusName === $status['name']) ? ' selected' : ''; ?>><?= htmlspecialchars($status['name']); ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">№ задания</label>
+                    <input type="text" id="sale-new-task" class="form-control" placeholder="№ задания">
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">№ заказа</label>
+                    <input type="text" id="sale-new-order" class="form-control" placeholder="№ заказа">
+                </div>
+                <div class="col-12 col-lg-auto d-grid d-lg-flex justify-content-lg-end">
+                    <label class="form-label d-none d-lg-block">&nbsp;</label>
+                    <button type="button" class="btn btn-primary" id="sale-add-product"><i class="bi bi-plus"></i> Добавить</button>
+                </div>
+            </div>
         </div>
         <div class="text-end mb-4">
             <button type="submit" class="btn btn-success"><?= htmlspecialchars(isset($submit_label) ? $submit_label : 'Сохранить продажу'); ?></button>
@@ -142,6 +188,13 @@ if (!empty($sources)) {
         $sourcesForJs[] = array('id' => (int)$source['id'], 'name' => $source['name']);
     }
 }
+$statusesForJs = array();
+if (!empty($statuses)) {
+    foreach ($statuses as $status) {
+        $statusesForJs[] = array('name' => $status['name']);
+    }
+}
+$defaultStatusForJs = isset($defaultStatusName) ? $defaultStatusName : '';
 ?>
 <script>
 const saleSearchInput = document.getElementById('sale-product-search');
@@ -154,6 +207,8 @@ const saleNewTask = document.getElementById('sale-new-task');
 const saleNewOrder = document.getElementById('sale-new-order');
 let saleSelectedProduct = null;
 const saleSources = <?= json_encode($sourcesForJs, JSON_UNESCAPED_UNICODE); ?>;
+const saleStatuses = <?= json_encode($statusesForJs, JSON_UNESCAPED_UNICODE); ?>;
+const saleDefaultStatus = <?= json_encode($defaultStatusForJs, JSON_UNESCAPED_UNICODE); ?>;
 
 function escapeHtml(value) {
     return String(value)
@@ -217,6 +272,22 @@ function buildSourceOptions() {
     return options.join('');
 }
 
+function buildStatusOptions(selectedValue = '') {
+    const options = ['<option value="">Не выбрано</option>'];
+    let matched = false;
+    saleStatuses.forEach((status) => {
+        const isSelected = selectedValue !== '' && status.name === selectedValue;
+        if (isSelected) {
+            matched = true;
+        }
+        options.push(`<option value="${escapeHtml(status.name)}"${isSelected ? ' selected' : ''}>${escapeHtml(status.name)}</option>`);
+    });
+    if (selectedValue && !matched) {
+        options.push(`<option value="${escapeHtml(selectedValue)}" selected>${escapeHtml(selectedValue)}</option>`);
+    }
+    return options.join('');
+}
+
 document.getElementById('sale-add-product').addEventListener('click', () => {
     if (!saleSelectedProduct || !saleSelectedProduct.id) {
         alert('Выберите товар из списка.');
@@ -231,7 +302,7 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
 
     const tbody = document.querySelector('#sale-items tbody');
     const row = document.createElement('tr');
-    const statusValue = saleNewStatus.value.trim();
+    const statusValue = saleNewStatus.value;
     const taskValue = saleNewTask.value.trim();
     const orderValue = saleNewOrder.value.trim();
     const sourceValue = saleNewSource.value;
@@ -247,7 +318,11 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
                 ${buildSourceOptions()}
             </select>
         </td>
-        <td><input type="text" class="form-control" name="order_statuses[]" value="${escapeHtml(statusValue)}" placeholder="Введите статус"></td>
+        <td>
+            <select name="order_statuses[]" class="form-select">
+                ${buildStatusOptions(statusValue)}
+            </select>
+        </td>
         <td><input type="text" class="form-control" name="task_numbers[]" value="${escapeHtml(taskValue)}" placeholder="Введите № задания"></td>
         <td><input type="text" class="form-control" name="order_numbers[]" value="${escapeHtml(orderValue)}" placeholder="Введите № заказа"></td>
         <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button></td>
@@ -265,7 +340,13 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
     saleSuggestions.innerHTML = '';
     saleNewOrderDate.value = orderDate;
     saleNewSource.value = sourceValue;
-    saleNewStatus.value = statusValue;
+    if (statusValue) {
+        saleNewStatus.value = statusValue;
+    } else if (saleDefaultStatus) {
+        saleNewStatus.value = saleDefaultStatus;
+    } else {
+        saleNewStatus.value = '';
+    }
     saleNewTask.value = '';
     saleNewOrder.value = '';
     saleSelectedProduct = null;

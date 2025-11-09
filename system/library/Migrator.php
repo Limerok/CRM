@@ -21,6 +21,7 @@ class Migrator
         $this->createSupplies();
         $this->createStock();
         $this->createOrderSources();
+        $this->createOrderStatuses();
         $this->createSales();
     }
 
@@ -187,6 +188,8 @@ class Migrator
         if ($weight) {
             $this->ensureSetting('config_weight_class_id', $weight['id']);
         }
+
+        $this->ensureSetting('config_default_order_status_id', 0);
     }
 
     private function ensureSetting($key, $value)
@@ -230,6 +233,16 @@ class Migrator
     private function createOrderSources()
     {
         $this->db->query("CREATE TABLE IF NOT EXISTS order_sources (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    private function createOrderStatuses()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS order_statuses (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL UNIQUE,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

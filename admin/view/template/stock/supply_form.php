@@ -36,20 +36,27 @@
                     <?php endforeach; ?>
                 <?php endif; ?>
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td>
-                            <div class="position-relative">
-                                <input type="hidden" id="supply-new-product-id">
-                                <input type="text" id="supply-product-search" class="form-control" placeholder="Введите название или модель">
-                                <div class="list-group position-absolute w-100" id="supply-product-suggestions" style="z-index: 1000;"></div>
-                            </div>
-                        </td>
-                        <td><input type="number" id="supply-new-quantity" class="form-control" value="1" min="1"></td>
-                        <td class="text-end"><button type="button" class="btn btn-primary" id="supply-add-product"><i class="bi bi-plus"></i> Добавить</button></td>
-                    </tr>
-                </tfoot>
             </table>
+        </div>
+        <div class="bg-light border rounded p-3 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">Товар</label>
+                    <div class="position-relative">
+                        <input type="hidden" id="supply-new-product-id">
+                        <input type="text" id="supply-product-search" class="form-control" placeholder="Введите название или модель">
+                        <div class="list-group position-absolute w-100" id="supply-product-suggestions" style="z-index: 1000;"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label">Количество</label>
+                    <input type="number" id="supply-new-quantity" class="form-control" value="1" min="1">
+                </div>
+                <div class="col-12 col-lg-auto d-grid d-lg-flex justify-content-lg-end">
+                    <label class="form-label d-none d-lg-block">&nbsp;</label>
+                    <button type="button" class="btn btn-primary" id="supply-add-product"><i class="bi bi-plus"></i> Добавить</button>
+                </div>
+            </div>
         </div>
         <div class="text-end">
             <button type="submit" class="btn btn-success"><?= isset($submit_label) ? htmlspecialchars($submit_label) : 'Сохранить поставку'; ?></button>
