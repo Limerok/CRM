@@ -7,31 +7,19 @@
         <div class="alert alert-danger"><?= htmlspecialchars($error); ?></div>
     <?php endif; ?>
     <form method="post" id="supply-form">
-        <div class="row g-3 align-items-end mb-4">
+        <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <label class="form-label">Дата поставки</label>
                 <input type="date" name="supply_date" class="form-control" value="<?= htmlspecialchars(isset($supply['supply_date']) ? $supply['supply_date'] : date('Y-m-d')); ?>">
             </div>
-            <div class="col-md-5 position-relative">
-                <label class="form-label">Поиск товара</label>
-                <input type="text" id="product-search" class="form-control" placeholder="Введите название или модель">
-                <div class="list-group position-absolute w-50" id="product-suggestions" style="z-index: 1000;"></div>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Количество</label>
-                <input type="number" id="product-quantity" class="form-control" value="1" min="1">
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-primary" id="add-product"><i class="bi bi-plus"></i> Добавить</button>
-            </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-bordered" id="supply-items">
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle" id="supply-items">
                 <thead>
                     <tr>
                         <th>Товар</th>
-                        <th>Количество</th>
-                        <th></th>
+                        <th style="width: 160px;">Количество</th>
+                        <th style="width: 80px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -42,16 +30,25 @@
                                 <?= htmlspecialchars($item['name']); ?> (<?= htmlspecialchars($item['model']); ?>)
                                 <input type="hidden" name="product_ids[]" value="<?= (int)$item['product_id']; ?>">
                             </td>
-                            <td>
-                                <input type="number" class="form-control" name="quantities[]" value="<?= (int)$item['quantity']; ?>" min="1" required>
-                            </td>
-                            <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-x"></i></button>
-                            </td>
+                            <td><input type="number" class="form-control" name="quantities[]" value="<?= (int)$item['quantity']; ?>" min="1" required></td>
+                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-x"></i></button></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td>
+                            <div class="position-relative">
+                                <input type="hidden" id="supply-new-product-id">
+                                <input type="text" id="supply-product-search" class="form-control" placeholder="Введите название или модель">
+                                <div class="list-group position-absolute w-100" id="supply-product-suggestions" style="z-index: 1000;"></div>
+                            </div>
+                        </td>
+                        <td><input type="number" id="supply-new-quantity" class="form-control" value="1" min="1"></td>
+                        <td class="text-end"><button type="button" class="btn btn-primary" id="supply-add-product"><i class="bi bi-plus"></i> Добавить</button></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         <div class="text-end">
@@ -60,44 +57,72 @@
     </form>
 </div>
 <script>
-const searchInput = document.getElementById('product-search');
-const suggestions = document.getElementById('product-suggestions');
-let selectedProduct = null;
+const supplySearchInput = document.getElementById('supply-product-search');
+const supplySuggestions = document.getElementById('supply-product-suggestions');
+const supplyNewProductId = document.getElementById('supply-new-product-id');
+const supplyNewQuantity = document.getElementById('supply-new-quantity');
+let supplySelectedProduct = null;
 
-searchInput.addEventListener('input', async (event) => {
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+supplySearchInput.addEventListener('input', async (event) => {
     const term = event.target.value.trim();
-    suggestions.innerHTML = '';
+    supplySelectedProduct = null;
+    supplyNewProductId.value = '';
+    supplySuggestions.innerHTML = '';
     if (term.length < 2) {
-        selectedProduct = null;
         return;
     }
-    const response = await fetch('<?= admin_url('stock/supply', array('action' => 'search')); ?>&term=' + encodeURIComponent(term));
-    const items = await response.json();
-    if (!items.length) {
-        return;
+    try {
+        const response = await fetch('<?= admin_url('stock/supply', array('action' => 'search')); ?>&term=' + encodeURIComponent(term));
+        if (!response.ok) {
+            return;
+        }
+        const items = await response.json();
+        if (!Array.isArray(items) || !items.length) {
+            return;
+        }
+        supplySuggestions.innerHTML = items.map(item => {
+            const displayName = escapeHtml(item.name);
+            const displayModel = item.model ? escapeHtml(item.model) : '';
+            const encodedName = encodeURIComponent(item.name);
+            const encodedModel = item.model ? encodeURIComponent(item.model) : '';
+            return `<button type="button" class="list-group-item list-group-item-action" data-id="${item.id}" data-name="${encodedName}" data-model="${encodedModel}">${displayName}${displayModel ? ' (' + displayModel + ')' : ''}</button>`;
+        }).join('');
+    } catch (error) {
+        console.error(error);
     }
-    suggestions.innerHTML = items.map(item => `<button type="button" class="list-group-item list-group-item-action" data-id="${item.id}" data-name="${item.name}" data-model="${item.model}">${item.name} (${item.model})</button>`).join('');
 });
 
-suggestions.addEventListener('click', (event) => {
+supplySuggestions.addEventListener('click', (event) => {
     if (event.target.matches('button[data-id]')) {
-        selectedProduct = {
-            id: event.target.dataset.id,
-            name: event.target.dataset.name,
-            model: event.target.dataset.model
+        const button = event.target;
+        const decodedName = button.dataset.name ? decodeURIComponent(button.dataset.name) : '';
+        const decodedModel = button.dataset.model ? decodeURIComponent(button.dataset.model) : '';
+        supplySelectedProduct = {
+            id: button.dataset.id,
+            name: decodedName,
+            model: decodedModel
         };
-        searchInput.value = `${selectedProduct.name} (${selectedProduct.model})`;
-        suggestions.innerHTML = '';
+        supplySearchInput.value = decodedName + (decodedModel ? ` (${decodedModel})` : '');
+        supplyNewProductId.value = supplySelectedProduct.id;
+        supplySuggestions.innerHTML = '';
     }
 });
 
-document.getElementById('add-product').addEventListener('click', () => {
-    if (!selectedProduct) {
+document.getElementById('supply-add-product').addEventListener('click', () => {
+    if (!supplySelectedProduct || !supplySelectedProduct.id) {
         alert('Выберите товар из списка.');
         return;
     }
-    const quantityField = document.getElementById('product-quantity');
-    const quantity = parseInt(quantityField.value, 10);
+    const quantity = parseInt(supplyNewQuantity.value, 10);
     if (!quantity || quantity <= 0) {
         alert('Количество должно быть больше нуля.');
         return;
@@ -106,20 +131,18 @@ document.getElementById('add-product').addEventListener('click', () => {
     const row = document.createElement('tr');
     row.innerHTML = `
         <td>
-            ${selectedProduct.name} (${selectedProduct.model})
-            <input type="hidden" name="product_ids[]" value="${selectedProduct.id}">
+            ${escapeHtml(supplySelectedProduct.name)}${supplySelectedProduct.model ? ' (' + escapeHtml(supplySelectedProduct.model) + ')' : ''}
+            <input type="hidden" name="product_ids[]" value="${supplySelectedProduct.id}">
         </td>
-        <td>
-            <input type="number" class="form-control" name="quantities[]" value="${quantity}" min="1" required>
-        </td>
-        <td class="text-end">
-            <button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-x"></i></button>
-        </td>
+        <td><input type="number" class="form-control" name="quantities[]" value="${quantity}" min="1" required></td>
+        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-x"></i></button></td>
     `;
     tbody.appendChild(row);
-    searchInput.value = '';
-    quantityField.value = 1;
-    selectedProduct = null;
+    supplySearchInput.value = '';
+    supplyNewProductId.value = '';
+    supplySuggestions.innerHTML = '';
+    supplyNewQuantity.value = 1;
+    supplySelectedProduct = null;
 });
 
 document.querySelector('#supply-items tbody').addEventListener('click', (event) => {
