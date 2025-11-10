@@ -173,36 +173,47 @@
                                 <td class="placement-cost text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end payment-value-input" value="<?= $paymentValue; ?>" placeholder="<?= $defaultPaymentValue !== null ? htmlspecialchars(number_format($defaultPaymentValue, 2, '.', '')) : '0.00'; ?>">
-                                        <select class="form-select form-select-sm payment-type-select">
-                                            <option value="">По умолчанию</option>
-                                            <option value="percent"<?= $paymentSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
-                                            <option value="fixed"<?= $paymentSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+        <input type="number" step="0.01" min="0"
+               class="form-control form-control-sm text-end payment-value-input"
+               value="<?= $paymentValue; ?>"
+               placeholder="<?= $defaultPaymentValue !== null ? htmlspecialchars(number_format($defaultPaymentValue, 2, '.', '')) : '0.00'; ?>">
+        <select class="form-select form-select-sm payment-type-select">
+            <option value="">По умолчанию</option>
+            <option value="percent"<?= $paymentSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+            <option value="fixed"<?= $paymentSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+        </select>
+        <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+    </div>  
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end logistics-value-input" value="<?= $logisticsValue; ?>" placeholder="<?= $defaultLogisticsValue !== null ? htmlspecialchars(number_format($defaultLogisticsValue, 2, '.', '')) : '0.00'; ?>">
-                                        <select class="form-select form-select-sm logistics-type-select">
-                                            <option value="">По умолчанию</option>
-                                            <option value="percent"<?= $logisticsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
-                                            <option value="fixed"<?= $logisticsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+    <input type="number" step="0.01" min="0"
+           class="form-control form-control-sm text-end logistics-value-input"
+           value="<?= $logisticsValue; ?>"
+           placeholder="<?= $defaultLogisticsValue !== null ? htmlspecialchars(number_format($defaultLogisticsValue, 2, '.', '')) : '0.00'; ?>">
+    <select class="form-select form-select-sm logistics-type-select">
+        <option value="">По умолчанию</option>
+        <option value="percent"<?= $logisticsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+        <option value="fixed"<?= $logisticsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+    </select>
+    <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+</div>
+
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end reviews-value-input" value="<?= $reviewsValue; ?>" placeholder="<?= $defaultReviewsValue !== null ? htmlspecialchars(number_format($defaultReviewsValue, 2, '.', '')) : '0.00'; ?>">
-                                        <select class="form-select form-select-sm reviews-type-select">
-                                            <option value="">По умолчанию</option>
-                                            <option value="percent"<?= $reviewsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
-                                            <option value="fixed"<?= $reviewsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+    <input type="number" step="0.01" min="0"
+           class="form-control form-control-sm text-end reviews-value-input"
+           value="<?= $reviewsValue; ?>"
+           placeholder="<?= $defaultReviewsValue !== null ? htmlspecialchars(number_format($defaultReviewsValue, 2, '.', '')) : '0.00'; ?>">
+    <select class="form-select form-select-sm reviews-type-select">
+        <option value="">По умолчанию</option>
+        <option value="percent"<?= $reviewsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+        <option value="fixed"<?= $reviewsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+    </select>
+    <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+</div>
+
                                 </td>
                                 <td class="total-expenses text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                             </tr>
