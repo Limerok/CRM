@@ -27,3 +27,32 @@
         </div>
     </div>
 </div>
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Пополнение остатков</h5>
+        </div>
+        <?php if (!empty($replenishments)): ?>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th class="text-end" style="width: 160px;">Рекомендуется подвезти</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($replenishments as $item): ?>
+                            <tr>
+                                <td><?= htmlspecialchars(isset($item['name']) ? (string)$item['name'] : ''); ?></td>
+                                <td class="text-end"><?= (int)$item['to_deliver']; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <p class="text-muted mb-0">Нет рекомендаций по пополнению.</p>
+        <?php endif; ?>
+    </div>
+</div>

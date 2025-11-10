@@ -303,9 +303,11 @@ class ControllerSalesPricing extends Controller
             return;
         }
 
-        $defaultsInput = isset($payload['defaults']) && is_array($payload['defaults']) ? $payload['defaults'] : array();
-        $normalizedDefaults = $this->normalizeDefaults($defaultsInput);
-        $this->saveDefaults($sourceId, $normalizedDefaults);
+        if (array_key_exists('defaults', $payload)) {
+            $defaultsInput = is_array($payload['defaults']) ? $payload['defaults'] : array();
+            $normalizedDefaults = $this->normalizeDefaults($defaultsInput);
+            $this->saveDefaults($sourceId, $normalizedDefaults);
+        }
 
         $items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array();
         if (!$items) {
@@ -385,5 +387,45 @@ class ControllerSalesPricing extends Controller
         }
 
         echo json_encode(array('success' => true, 'saved' => $saved));
+    }
+
+    public function save_defaults()
+    {
+        require_login();
+
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(array('success' => false, 'error' => 'Метод не поддерживается.'));
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Некорректный формат данных.'));
+            return;
+        }
+
+        $sourceId = isset($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        if ($sourceId <= 0) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Источник не выбран.'));
+            return;
+        }
+
+        $sourceExists = $this->db->fetch('SELECT id FROM order_sources WHERE id = :id', array('id' => $sourceId));
+        if (!$sourceExists) {
+            http_response_code(404);
+            echo json_encode(array('success' => false, 'error' => 'Источник не найден.'));
+            return;
+        }
+
+        $defaultsInput = isset($payload['defaults']) && is_array($payload['defaults']) ? $payload['defaults'] : array();
+        $normalizedDefaults = $this->normalizeDefaults($defaultsInput);
+        $this->saveDefaults($sourceId, $normalizedDefaults);
+
+        echo json_encode(array('success' => true));
     }
 }

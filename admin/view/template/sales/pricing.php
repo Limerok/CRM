@@ -40,7 +40,11 @@
 <?php if ($hasSources): ?>
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <h5 class="card-title mb-3">Значения по умолчанию</h5>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="card-title mb-0">Значения по умолчанию</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="pricing-save-defaults-button">Сохранить</button>
+            </div>
+            <div id="pricing-defaults-alert" class="alert d-none" role="alert"></div>
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label">Налог %</label>
@@ -230,6 +234,7 @@
     const currencyCode = <?= json_encode($default_currency_code); ?>;
     const selectedSourceId = <?= (int)$currentSourceId; ?>;
     const saveUrl = <?= json_encode(admin_url('sales/pricing', array('action' => 'save'))); ?>;
+    const saveDefaultsUrl = <?= json_encode(admin_url('sales/pricing', array('action' => 'save_defaults'))); ?>;
     const defaultsData = <?= json_encode(array(
         'tax_percent' => $defaultTaxPercent,
         'profit_percent' => $defaultProfitPercent,
@@ -241,8 +246,10 @@
         'reviews_value' => $defaultReviewsValue,
     ), JSON_UNESCAPED_UNICODE); ?>;
     const table = document.getElementById('pricing-table');
-    const saveButton = document.getElementById('pricing-save-button');
-    const alertBox = document.getElementById('pricing-alert');
+    const itemsSaveButton = document.getElementById('pricing-save-button');
+    const saveDefaultsButton = document.getElementById('pricing-save-defaults-button');
+    const itemsAlertBox = document.getElementById('pricing-alert');
+    const defaultsAlertBox = document.getElementById('pricing-defaults-alert');
 
     const defaultControls = {
         tax: document.getElementById('default-tax-percent'),
@@ -528,22 +535,40 @@
         });
     }
 
-    function showAlert(message, type) {
-        if (!alertBox) {
+    function showItemsAlert(message, type) {
+        if (!itemsAlertBox) {
             return;
         }
-        alertBox.textContent = message;
-        alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
-        alertBox.classList.add('alert-' + type);
+        itemsAlertBox.textContent = message;
+        itemsAlertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+        itemsAlertBox.classList.add('alert-' + type);
     }
 
-    function clearAlert() {
-        if (!alertBox) {
+    function clearItemsAlert() {
+        if (!itemsAlertBox) {
             return;
         }
-        alertBox.classList.add('d-none');
-        alertBox.classList.remove('alert-success', 'alert-danger', 'alert-warning');
-        alertBox.textContent = '';
+        itemsAlertBox.classList.add('d-none');
+        itemsAlertBox.classList.remove('alert-success', 'alert-danger', 'alert-warning');
+        itemsAlertBox.textContent = '';
+    }
+
+    function showDefaultsAlert(message, type) {
+        if (!saveDefaultsButton || !defaultsAlertBox) {
+            return;
+        }
+        defaultsAlertBox.textContent = message;
+        defaultsAlertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+        defaultsAlertBox.classList.add('alert-' + type);
+    }
+
+    function clearDefaultsAlert() {
+        if (!defaultsAlertBox) {
+            return;
+        }
+        defaultsAlertBox.classList.add('d-none');
+        defaultsAlertBox.classList.remove('alert-success', 'alert-danger', 'alert-warning');
+        defaultsAlertBox.textContent = '';
     }
 
     const rows = table.querySelectorAll('tbody tr');
@@ -616,22 +641,78 @@
 
     updateDefaultsFromInputs();
     recalculateAll();
-    if (saveButton) {
-        saveButton.addEventListener('click', async () => {
-            clearAlert();
+    if (saveDefaultsButton) {
+        saveDefaultsButton.addEventListener('click', async () => {
+            clearDefaultsAlert();
 
             if (!selectedSourceId) {
-                showAlert('Выберите источник заказа, чтобы сохранить данные.', 'warning');
+                showDefaultsAlert('Выберите источник заказа, чтобы сохранить значения по умолчанию.', 'warning');
+                return;
+            }
+
+            updateDefaultsFromInputs();
+
+            saveDefaultsButton.disabled = true;
+            saveDefaultsButton.classList.add('disabled');
+
+            try {
+                const response = await fetch(saveDefaultsUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        source_id: selectedSourceId,
+                        defaults: {
+                            tax_percent: pricingDefaults.tax_percent,
+                            profit_percent: pricingDefaults.profit_percent,
+                            payment_type: pricingDefaults.payment_type,
+                            payment_value: pricingDefaults.payment_value,
+                            logistics_type: pricingDefaults.logistics_type,
+                            logistics_value: pricingDefaults.logistics_value,
+                            reviews_type: pricingDefaults.reviews_type,
+                            reviews_value: pricingDefaults.reviews_value,
+                        },
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const data = await response.json();
+                if (data && data.success) {
+                    showDefaultsAlert('Значения по умолчанию сохранены.', 'success');
+                } else {
+                    showDefaultsAlert((data && data.error) ? data.error : 'Не удалось сохранить значения по умолчанию.', 'danger');
+                }
+            } catch (error) {
+                showDefaultsAlert('Не удалось сохранить значения по умолчанию. Попробуйте еще раз.', 'danger');
+            } finally {
+                saveDefaultsButton.disabled = false;
+                saveDefaultsButton.classList.remove('disabled');
+            }
+        });
+    }
+
+    if (itemsSaveButton) {
+        itemsSaveButton.addEventListener('click', async () => {
+            clearItemsAlert();
+
+            if (!selectedSourceId) {
+                showItemsAlert('Выберите источник заказа, чтобы сохранить данные.', 'warning');
                 return;
             }
 
             const rows = Array.from(table.querySelectorAll('tbody tr'));
             if (!rows.length) {
-                showAlert('Нет данных для сохранения.', 'warning');
+                showItemsAlert('Нет данных для сохранения.', 'warning');
                 return;
             }
 
             const items = [];
+            updateDefaultsFromInputs();
             rows.forEach((row) => {
                 const productId = parseInt(row.dataset.productId || '0', 10);
                 if (!productId) {
@@ -678,8 +759,8 @@
                 });
             });
 
-            saveButton.disabled = true;
-            saveButton.classList.add('disabled');
+            itemsSaveButton.disabled = true;
+            itemsSaveButton.classList.add('disabled');
 
             try {
                 const response = await fetch(saveUrl, {
@@ -687,18 +768,9 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         source_id: selectedSourceId,
-                        defaults: {
-                            tax_percent: pricingDefaults.tax_percent,
-                            profit_percent: pricingDefaults.profit_percent,
-                            payment_type: pricingDefaults.payment_type,
-                            payment_value: pricingDefaults.payment_value,
-                            logistics_type: pricingDefaults.logistics_type,
-                            logistics_value: pricingDefaults.logistics_value,
-                            reviews_type: pricingDefaults.reviews_type,
-                            reviews_value: pricingDefaults.reviews_value,
-                        },
                         items,
                     }),
                 });
@@ -709,15 +781,15 @@
 
                 const data = await response.json();
                 if (data && data.success) {
-                    showAlert('Данные успешно сохранены.', 'success');
+                    showItemsAlert('Данные успешно сохранены.', 'success');
                 } else {
-                    showAlert((data && data.error) ? data.error : 'Не удалось сохранить данные.', 'danger');
+                    showItemsAlert((data && data.error) ? data.error : 'Не удалось сохранить данные.', 'danger');
                 }
             } catch (error) {
-                showAlert('Не удалось сохранить данные. Попробуйте еще раз.', 'danger');
+                showItemsAlert('Не удалось сохранить данные. Попробуйте еще раз.', 'danger');
             } finally {
-                saveButton.disabled = false;
-                saveButton.classList.remove('disabled');
+                itemsSaveButton.disabled = false;
+                itemsSaveButton.classList.remove('disabled');
             }
         });
     }
