@@ -45,7 +45,7 @@ class ControllerStockSale extends Controller
                 $saleId = (int)$this->db->lastInsertId();
 
                 foreach ($items as $item) {
-                    $this->db->query('INSERT INTO sale_items (sale_id, product_id, order_date, source_id, order_status, task_number, order_number) VALUES (:sale_id, :product_id, :order_date, :source_id, :order_status, :task_number, :order_number)', array(
+                    $this->db->query('INSERT INTO sale_items (sale_id, product_id, order_date, source_id, order_status, task_number, order_number, seller_price, source_sale_price) VALUES (:sale_id, :product_id, :order_date, :source_id, :order_status, :task_number, :order_number, :seller_price, :source_sale_price)', array(
                         'sale_id' => $saleId,
                         'product_id' => $item['product_id'],
                         'order_date' => $item['order_date'],
@@ -53,6 +53,8 @@ class ControllerStockSale extends Controller
                         'order_status' => $item['order_status'],
                         'task_number' => $item['task_number'],
                         'order_number' => $item['order_number'],
+                        'seller_price' => isset($item['seller_price']) ? $item['seller_price'] : null,
+                        'source_sale_price' => isset($item['source_sale_price']) ? $item['source_sale_price'] : null,
                     ));
                 }
 
@@ -130,6 +132,8 @@ class ControllerStockSale extends Controller
                 'order_status' => $row['order_status'] !== null ? $row['order_status'] : '',
                 'task_number' => $row['task_number'] !== null ? $row['task_number'] : '',
                 'order_number' => $row['order_number'] !== null ? $row['order_number'] : '',
+                'seller_price' => $row['seller_price'] !== null ? (float)$row['seller_price'] : null,
+                'source_sale_price' => $row['source_sale_price'] !== null ? (float)$row['source_sale_price'] : null,
             );
         }
 
@@ -172,7 +176,7 @@ class ControllerStockSale extends Controller
                 $this->db->query('DELETE FROM sale_items WHERE sale_id = :sale_id', array('sale_id' => $id));
 
                 foreach ($items as $item) {
-                    $this->db->query('INSERT INTO sale_items (sale_id, product_id, order_date, source_id, order_status, task_number, order_number) VALUES (:sale_id, :product_id, :order_date, :source_id, :order_status, :task_number, :order_number)', array(
+                    $this->db->query('INSERT INTO sale_items (sale_id, product_id, order_date, source_id, order_status, task_number, order_number, seller_price, source_sale_price) VALUES (:sale_id, :product_id, :order_date, :source_id, :order_status, :task_number, :order_number, :seller_price, :source_sale_price)', array(
                         'sale_id' => $id,
                         'product_id' => $item['product_id'],
                         'order_date' => $item['order_date'],
@@ -180,6 +184,8 @@ class ControllerStockSale extends Controller
                         'order_status' => $item['order_status'],
                         'task_number' => $item['task_number'],
                         'order_number' => $item['order_number'],
+                        'seller_price' => isset($item['seller_price']) ? $item['seller_price'] : null,
+                        'source_sale_price' => isset($item['source_sale_price']) ? $item['source_sale_price'] : null,
                     ));
                 }
 
@@ -336,8 +342,19 @@ class ControllerStockSale extends Controller
         $orderStatuses = isset($_POST['order_statuses']) ? $_POST['order_statuses'] : array();
         $taskNumbersInput = isset($_POST['task_numbers']) ? $_POST['task_numbers'] : array();
         $orderNumbersInput = isset($_POST['order_numbers']) ? $_POST['order_numbers'] : array();
+        $sellerPricesInput = isset($_POST['seller_prices']) ? $_POST['seller_prices'] : array();
+        $sourceSalePricesInput = isset($_POST['source_sale_prices']) ? $_POST['source_sale_prices'] : array();
 
-        $rowCount = max(count($productIds), count($orderDates), count($sourceIds), count($orderStatuses), count($taskNumbersInput), count($orderNumbersInput));
+        $rowCount = max(
+            count($productIds),
+            count($orderDates),
+            count($sourceIds),
+            count($orderStatuses),
+            count($taskNumbersInput),
+            count($orderNumbersInput),
+            count($sellerPricesInput),
+            count($sourceSalePricesInput)
+        );
 
         $rawRows = array();
         $preparedItems = array();
@@ -350,8 +367,10 @@ class ControllerStockSale extends Controller
             $status = isset($orderStatuses[$i]) ? trim($orderStatuses[$i]) : '';
             $taskNumber = isset($taskNumbersInput[$i]) ? trim($taskNumbersInput[$i]) : '';
             $orderNumber = isset($orderNumbersInput[$i]) ? trim($orderNumbersInput[$i]) : '';
+            $sellerPriceInput = isset($sellerPricesInput[$i]) ? trim($sellerPricesInput[$i]) : '';
+            $sourceSalePriceInput = isset($sourceSalePricesInput[$i]) ? trim($sourceSalePricesInput[$i]) : '';
 
-            if ($productId <= 0 && $orderDate === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '') {
+            if ($productId <= 0 && $orderDate === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '' && $sellerPriceInput === '' && $sourceSalePriceInput === '') {
                 continue;
             }
 
@@ -382,6 +401,34 @@ class ControllerStockSale extends Controller
                 }
             }
 
+            $sellerPrice = null;
+            if ($sellerPriceInput !== '') {
+                if (!is_numeric(str_replace(',', '.', $sellerPriceInput))) {
+                    $errors[] = 'Цена продавца должна быть числом.';
+                    $isValid = false;
+                } else {
+                    $sellerPrice = (float)str_replace(',', '.', $sellerPriceInput);
+                    if ($sellerPrice < 0) {
+                        $errors[] = 'Цена продавца не может быть отрицательной.';
+                        $isValid = false;
+                    }
+                }
+            }
+
+            $sourceSalePrice = null;
+            if ($sourceSalePriceInput !== '') {
+                if (!is_numeric(str_replace(',', '.', $sourceSalePriceInput))) {
+                    $errors[] = 'Цена реализации источником должна быть числом.';
+                    $isValid = false;
+                } else {
+                    $sourceSalePrice = (float)str_replace(',', '.', $sourceSalePriceInput);
+                    if ($sourceSalePrice < 0) {
+                        $errors[] = 'Цена реализации источником не может быть отрицательной.';
+                        $isValid = false;
+                    }
+                }
+            }
+
             $rawRows[] = array(
                 'product_id' => $productId,
                 'order_date' => $orderDate,
@@ -389,6 +436,10 @@ class ControllerStockSale extends Controller
                 'order_status' => $status,
                 'task_number' => $taskNumber,
                 'order_number' => $orderNumber,
+                'seller_price' => $sellerPriceInput,
+                'source_sale_price' => $sourceSalePriceInput,
+                'seller_price_value' => $sellerPrice,
+                'source_sale_price_value' => $sourceSalePrice,
             );
 
             if ($isValid) {
@@ -399,6 +450,8 @@ class ControllerStockSale extends Controller
                     'order_status' => $status !== '' ? $status : null,
                     'task_number' => $taskNumber !== '' ? $taskNumber : null,
                     'order_number' => $orderNumber !== '' ? $orderNumber : null,
+                    'seller_price' => $sellerPrice,
+                    'source_sale_price' => $sourceSalePrice,
                 );
             }
         }
@@ -448,6 +501,8 @@ class ControllerStockSale extends Controller
                 'order_status' => $row['order_status'],
                 'task_number' => $row['task_number'],
                 'order_number' => $row['order_number'],
+                'seller_price' => $row['seller_price'],
+                'source_sale_price' => $row['source_sale_price'],
             );
         }
 

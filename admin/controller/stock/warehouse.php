@@ -28,10 +28,13 @@ class ControllerStockWarehouse extends Controller
             $sort = 'name';
         }
 
-        $sql = 'SELECT s.product_id, s.quantity, p.name, p.model, p.series, m.name AS manufacturer_name, c.name AS category_name FROM stock_items s
+        $sql = 'SELECT s.product_id, s.quantity, p.name, p.model, p.series, m.name AS manufacturer_name, c.name AS category_name,
+                       prs.recommended_quantity
+            FROM stock_items s
             LEFT JOIN products p ON s.product_id = p.id
             LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
-            LEFT JOIN categories c ON p.category_id = c.id';
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN product_recommended_stock prs ON prs.product_id = s.product_id';
 
         $conditions = array();
         $params = array();
@@ -68,6 +71,19 @@ class ControllerStockWarehouse extends Controller
         $sql .= ' ORDER BY ' . $sortMap[$sort] . ' ' . $order . ', p.name ASC';
 
         $items = $this->db->fetchAll($sql, $params);
+
+        foreach ($items as &$item) {
+            $recommendedQuantity = isset($item['recommended_quantity']) ? $item['recommended_quantity'] : null;
+            $quantity = isset($item['quantity']) ? (int)$item['quantity'] : 0;
+
+            if ($recommendedQuantity === null) {
+                $item['recommended_to_deliver'] = null;
+            } else {
+                $recommendedQuantity = (int)$recommendedQuantity;
+                $item['recommended_to_deliver'] = $recommendedQuantity > $quantity ? $recommendedQuantity - $quantity : 0;
+            }
+        }
+        unset($item);
 
         $manufacturers = $this->db->fetchAll('SELECT id, name FROM manufacturers ORDER BY name ASC');
         $categories = $this->db->fetchAll('SELECT id, name FROM categories ORDER BY name ASC');

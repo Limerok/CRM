@@ -18,23 +18,135 @@ class ControllerSalesPricing extends Controller
                 continue;
             }
 
-            $paymentType = isset($row['payment_type']) ? $row['payment_type'] : 'percent';
-            $logisticsType = isset($row['logistics_type']) ? $row['logistics_type'] : 'percent';
-            $reviewsType = isset($row['reviews_type']) ? $row['reviews_type'] : 'percent';
+            $paymentType = isset($row['payment_type']) ? $row['payment_type'] : null;
+            $logisticsType = isset($row['logistics_type']) ? $row['logistics_type'] : null;
+            $reviewsType = isset($row['reviews_type']) ? $row['reviews_type'] : null;
 
             $map[$productId] = array(
                 'sale_price' => isset($row['sale_price']) ? (float)$row['sale_price'] : null,
-                'profit_percent' => isset($row['profit_percent']) ? (float)$row['profit_percent'] : 0.0,
-                'payment_type' => in_array($paymentType, array('percent', 'fixed'), true) ? $paymentType : 'percent',
-                'payment_value' => isset($row['payment_value']) ? (float)$row['payment_value'] : 0.0,
-                'logistics_type' => in_array($logisticsType, array('percent', 'fixed'), true) ? $logisticsType : 'percent',
-                'logistics_value' => isset($row['logistics_value']) ? (float)$row['logistics_value'] : 0.0,
-                'reviews_type' => in_array($reviewsType, array('percent', 'fixed'), true) ? $reviewsType : 'percent',
-                'reviews_value' => isset($row['reviews_value']) ? (float)$row['reviews_value'] : 0.0,
+                'profit_percent' => isset($row['profit_percent']) && $row['profit_percent'] !== null ? (float)$row['profit_percent'] : null,
+                'payment_type' => in_array($paymentType, array('percent', 'fixed'), true) ? $paymentType : null,
+                'payment_value' => isset($row['payment_value']) && $row['payment_value'] !== null ? (float)$row['payment_value'] : null,
+                'logistics_type' => in_array($logisticsType, array('percent', 'fixed'), true) ? $logisticsType : null,
+                'logistics_value' => isset($row['logistics_value']) && $row['logistics_value'] !== null ? (float)$row['logistics_value'] : null,
+                'reviews_type' => in_array($reviewsType, array('percent', 'fixed'), true) ? $reviewsType : null,
+                'reviews_value' => isset($row['reviews_value']) && $row['reviews_value'] !== null ? (float)$row['reviews_value'] : null,
             );
         }
 
         return $map;
+    }
+
+    private function getDefaultsForSource($sourceId)
+    {
+        if ($sourceId <= 0) {
+            return array(
+                'tax_percent' => 0.0,
+                'profit_percent' => null,
+                'payment_type' => 'percent',
+                'payment_value' => null,
+                'logistics_type' => 'percent',
+                'logistics_value' => null,
+                'reviews_type' => 'percent',
+                'reviews_value' => null,
+            );
+        }
+
+        $row = $this->db->fetch('SELECT tax_percent, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value FROM product_pricing_defaults WHERE source_id = :source_id', array(
+            'source_id' => $sourceId,
+        ));
+
+        if (!$row) {
+            return array(
+                'tax_percent' => 0.0,
+                'profit_percent' => null,
+                'payment_type' => 'percent',
+                'payment_value' => null,
+                'logistics_type' => 'percent',
+                'logistics_value' => null,
+                'reviews_type' => 'percent',
+                'reviews_value' => null,
+            );
+        }
+
+        return array(
+            'tax_percent' => isset($row['tax_percent']) ? (float)$row['tax_percent'] : 0.0,
+            'profit_percent' => isset($row['profit_percent']) && $row['profit_percent'] !== null ? (float)$row['profit_percent'] : null,
+            'payment_type' => in_array(isset($row['payment_type']) ? $row['payment_type'] : '', array('percent', 'fixed'), true) ? $row['payment_type'] : 'percent',
+            'payment_value' => isset($row['payment_value']) && $row['payment_value'] !== null ? (float)$row['payment_value'] : null,
+            'logistics_type' => in_array(isset($row['logistics_type']) ? $row['logistics_type'] : '', array('percent', 'fixed'), true) ? $row['logistics_type'] : 'percent',
+            'logistics_value' => isset($row['logistics_value']) && $row['logistics_value'] !== null ? (float)$row['logistics_value'] : null,
+            'reviews_type' => in_array(isset($row['reviews_type']) ? $row['reviews_type'] : '', array('percent', 'fixed'), true) ? $row['reviews_type'] : 'percent',
+            'reviews_value' => isset($row['reviews_value']) && $row['reviews_value'] !== null ? (float)$row['reviews_value'] : null,
+        );
+    }
+
+    private function normalizeDefaults(array $defaults)
+    {
+        $normalized = array();
+
+        $taxPercent = isset($defaults['tax_percent']) ? (float)$defaults['tax_percent'] : 0.0;
+        if ($taxPercent < 0) {
+            $taxPercent = 0.0;
+        }
+        $normalized['tax_percent'] = $taxPercent;
+
+        $profitPercent = null;
+        if (isset($defaults['profit_percent']) && $defaults['profit_percent'] !== '' && $defaults['profit_percent'] !== null) {
+            $profitPercent = (float)$defaults['profit_percent'];
+            if ($profitPercent < 0) {
+                $profitPercent = 0.0;
+            }
+        }
+        $normalized['profit_percent'] = $profitPercent;
+
+        $normalized['payment_type'] = in_array(isset($defaults['payment_type']) ? $defaults['payment_type'] : '', array('percent', 'fixed'), true) ? $defaults['payment_type'] : 'percent';
+        $normalized['logistics_type'] = in_array(isset($defaults['logistics_type']) ? $defaults['logistics_type'] : '', array('percent', 'fixed'), true) ? $defaults['logistics_type'] : 'percent';
+        $normalized['reviews_type'] = in_array(isset($defaults['reviews_type']) ? $defaults['reviews_type'] : '', array('percent', 'fixed'), true) ? $defaults['reviews_type'] : 'percent';
+
+        foreach (array('payment_value', 'logistics_value', 'reviews_value') as $key) {
+            $value = null;
+            if (isset($defaults[$key]) && $defaults[$key] !== '' && $defaults[$key] !== null) {
+                $floatValue = (float)$defaults[$key];
+                if ($floatValue < 0) {
+                    $floatValue = 0.0;
+                }
+                $value = $floatValue;
+            }
+            $normalized[$key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    private function saveDefaults($sourceId, array $defaults)
+    {
+        if ($sourceId <= 0) {
+            return;
+        }
+
+        $existing = $this->db->fetch('SELECT id FROM product_pricing_defaults WHERE source_id = :source_id', array(
+            'source_id' => $sourceId,
+        ));
+
+        $params = array(
+            'source_id' => $sourceId,
+            'tax_percent' => $defaults['tax_percent'],
+            'profit_percent' => $defaults['profit_percent'],
+            'payment_type' => $defaults['payment_type'],
+            'payment_value' => $defaults['payment_value'],
+            'logistics_type' => $defaults['logistics_type'],
+            'logistics_value' => $defaults['logistics_value'],
+            'reviews_type' => $defaults['reviews_type'],
+            'reviews_value' => $defaults['reviews_value'],
+        );
+
+        if ($existing) {
+            $params['id'] = (int)$existing['id'];
+            $this->db->query('UPDATE product_pricing_defaults SET tax_percent = :tax_percent, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $params);
+        } else {
+            $this->db->query('INSERT INTO product_pricing_defaults (source_id, tax_percent, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value) VALUES (:source_id, :tax_percent, :profit_percent, :payment_type, :payment_value, :logistics_type, :logistics_value, :reviews_type, :reviews_value)', $params);
+        }
     }
 
     public function index()
@@ -96,6 +208,7 @@ class ControllerSalesPricing extends Controller
             ORDER BY p.name ASC");
 
         $pricingMap = $this->getProductPricingMap($selectedSourceId);
+        $defaults = $this->getDefaultsForSource($selectedSourceId);
 
         $commissionMap = array();
         if ($selectedSourceId) {
@@ -120,13 +233,13 @@ class ControllerSalesPricing extends Controller
             $productId = isset($product['id']) ? (int)$product['id'] : 0;
             $pricing = isset($pricingMap[$productId]) ? $pricingMap[$productId] : array();
             $salePrice = array_key_exists('sale_price', $pricing) ? (float)$pricing['sale_price'] : null;
-            $profitPercent = array_key_exists('profit_percent', $pricing) ? (float)$pricing['profit_percent'] : 0.0;
-            $paymentType = isset($pricing['payment_type']) ? $pricing['payment_type'] : 'percent';
-            $paymentValue = array_key_exists('payment_value', $pricing) ? (float)$pricing['payment_value'] : 0.0;
-            $logisticsType = isset($pricing['logistics_type']) ? $pricing['logistics_type'] : 'percent';
-            $logisticsValue = array_key_exists('logistics_value', $pricing) ? (float)$pricing['logistics_value'] : 0.0;
-            $reviewsType = isset($pricing['reviews_type']) ? $pricing['reviews_type'] : 'percent';
-            $reviewsValue = array_key_exists('reviews_value', $pricing) ? (float)$pricing['reviews_value'] : 0.0;
+            $profitPercent = array_key_exists('profit_percent', $pricing) ? $pricing['profit_percent'] : null;
+            $paymentType = isset($pricing['payment_type']) ? $pricing['payment_type'] : null;
+            $paymentValue = array_key_exists('payment_value', $pricing) ? $pricing['payment_value'] : null;
+            $logisticsType = isset($pricing['logistics_type']) ? $pricing['logistics_type'] : null;
+            $logisticsValue = array_key_exists('logistics_value', $pricing) ? $pricing['logistics_value'] : null;
+            $reviewsType = isset($pricing['reviews_type']) ? $pricing['reviews_type'] : null;
+            $reviewsValue = array_key_exists('reviews_value', $pricing) ? $pricing['reviews_value'] : null;
 
             $products[] = array(
                 'id' => $productId,
@@ -138,11 +251,11 @@ class ControllerSalesPricing extends Controller
                 'commission_percent' => $commissionPercent,
                 'sale_price' => $salePrice,
                 'profit_percent' => $profitPercent,
-                'payment_type' => in_array($paymentType, array('percent', 'fixed'), true) ? $paymentType : 'percent',
+                'payment_type' => in_array($paymentType, array('percent', 'fixed'), true) ? $paymentType : null,
                 'payment_value' => $paymentValue,
-                'logistics_type' => in_array($logisticsType, array('percent', 'fixed'), true) ? $logisticsType : 'percent',
+                'logistics_type' => in_array($logisticsType, array('percent', 'fixed'), true) ? $logisticsType : null,
                 'logistics_value' => $logisticsValue,
-                'reviews_type' => in_array($reviewsType, array('percent', 'fixed'), true) ? $reviewsType : 'percent',
+                'reviews_type' => in_array($reviewsType, array('percent', 'fixed'), true) ? $reviewsType : null,
                 'reviews_value' => $reviewsValue,
             );
         }
@@ -153,6 +266,7 @@ class ControllerSalesPricing extends Controller
             'selected_source_name' => $selectedSourceName,
             'products' => $products,
             'default_currency_code' => $defaultCurrencyCode,
+            'pricing_defaults' => $defaults,
         ));
     }
 
@@ -189,6 +303,10 @@ class ControllerSalesPricing extends Controller
             return;
         }
 
+        $defaultsInput = isset($payload['defaults']) && is_array($payload['defaults']) ? $payload['defaults'] : array();
+        $normalizedDefaults = $this->normalizeDefaults($defaultsInput);
+        $this->saveDefaults($sourceId, $normalizedDefaults);
+
         $items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array();
         if (!$items) {
             echo json_encode(array('success' => true, 'saved' => 0));
@@ -211,23 +329,30 @@ class ControllerSalesPricing extends Controller
                 $salePrice = 0.0;
             }
 
-            $profitPercent = isset($item['profit_percent']) ? (float)$item['profit_percent'] : 0.0;
+            $profitPercent = null;
+            if (isset($item['profit_percent']) && $item['profit_percent'] !== null) {
+                $profitPercent = (float)$item['profit_percent'];
+                if ($profitPercent < 0) {
+                    $profitPercent = 0.0;
+                }
+            }
 
-            $paymentType = isset($item['payment_type']) && in_array($item['payment_type'], array('percent', 'fixed'), true) ? $item['payment_type'] : 'percent';
-            $paymentValue = isset($item['payment_value']) ? (float)$item['payment_value'] : 0.0;
-            if ($paymentValue < 0) {
+            $paymentType = isset($item['payment_type']) ? $item['payment_type'] : null;
+            $logisticsType = isset($item['logistics_type']) ? $item['logistics_type'] : null;
+            $reviewsType = isset($item['reviews_type']) ? $item['reviews_type'] : null;
+
+            $paymentValue = isset($item['payment_value']) && $item['payment_value'] !== null ? (float)$item['payment_value'] : null;
+            if ($paymentValue !== null && $paymentValue < 0) {
                 $paymentValue = 0.0;
             }
 
-            $logisticsType = isset($item['logistics_type']) && in_array($item['logistics_type'], array('percent', 'fixed'), true) ? $item['logistics_type'] : 'percent';
-            $logisticsValue = isset($item['logistics_value']) ? (float)$item['logistics_value'] : 0.0;
-            if ($logisticsValue < 0) {
+            $logisticsValue = isset($item['logistics_value']) && $item['logistics_value'] !== null ? (float)$item['logistics_value'] : null;
+            if ($logisticsValue !== null && $logisticsValue < 0) {
                 $logisticsValue = 0.0;
             }
 
-            $reviewsType = isset($item['reviews_type']) && in_array($item['reviews_type'], array('percent', 'fixed'), true) ? $item['reviews_type'] : 'percent';
-            $reviewsValue = isset($item['reviews_value']) ? (float)$item['reviews_value'] : 0.0;
-            if ($reviewsValue < 0) {
+            $reviewsValue = isset($item['reviews_value']) && $item['reviews_value'] !== null ? (float)$item['reviews_value'] : null;
+            if ($reviewsValue !== null && $reviewsValue < 0) {
                 $reviewsValue = 0.0;
             }
 
@@ -235,13 +360,13 @@ class ControllerSalesPricing extends Controller
                 'product_id' => $productId,
                 'source_id' => $sourceId,
                 'sale_price' => round($salePrice, 4),
-                'profit_percent' => round($profitPercent, 4),
-                'payment_type' => $paymentType,
-                'payment_value' => round($paymentValue, 4),
-                'logistics_type' => $logisticsType,
-                'logistics_value' => round($logisticsValue, 4),
-                'reviews_type' => $reviewsType,
-                'reviews_value' => round($reviewsValue, 4),
+                'profit_percent' => $profitPercent !== null ? round($profitPercent, 4) : null,
+                'payment_type' => in_array($paymentType, array('percent', 'fixed'), true) ? $paymentType : null,
+                'payment_value' => $paymentValue !== null ? round($paymentValue, 4) : null,
+                'logistics_type' => in_array($logisticsType, array('percent', 'fixed'), true) ? $logisticsType : null,
+                'logistics_value' => $logisticsValue !== null ? round($logisticsValue, 4) : null,
+                'reviews_type' => in_array($reviewsType, array('percent', 'fixed'), true) ? $reviewsType : null,
+                'reviews_value' => $reviewsValue !== null ? round($reviewsValue, 4) : null,
             );
 
             $existing = $this->db->fetch('SELECT id FROM product_pricing WHERE product_id = :product_id AND source_id = :source_id', array(

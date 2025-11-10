@@ -88,7 +88,8 @@ $sortIcon = function ($column) use ($sort, $order) {
                     <th><a class="text-decoration-none" href="<?= admin_url('stock/warehouse', array_merge($url_filters, array('sort' => 'series', 'order' => $toggleOrder('series')))); ?>">Серия <?= $sortIcon('series'); ?></a></th>
                     <th><a class="text-decoration-none" href="<?= admin_url('stock/warehouse', array_merge($url_filters, array('sort' => 'manufacturer', 'order' => $toggleOrder('manufacturer')))); ?>">Производитель <?= $sortIcon('manufacturer'); ?></a></th>
                     <th><a class="text-decoration-none" href="<?= admin_url('stock/warehouse', array_merge($url_filters, array('sort' => 'category', 'order' => $toggleOrder('category')))); ?>">Категория <?= $sortIcon('category'); ?></a></th>
-                    <th class="text-end"><a class="text-decoration-none" href="<?= admin_url('stock/warehouse', array_merge($url_filters, array('sort' => 'quantity', 'order' => $toggleOrder('quantity')))); ?>">Количество <?= $sortIcon('quantity'); ?></a></th>
+                    <th class="text-end"><a class="text-decoration-none" href="<?= admin_url('stock/warehouse', array_merge($url_filters, array('sort' => 'quantity', 'order' => $toggleOrder('quantity')))); ?>">Остатки <?= $sortIcon('quantity'); ?></a></th>
+                    <th class="text-end">Рекомендуется подвезти</th>
                 </tr>
             </thead>
             <tbody>
@@ -102,10 +103,17 @@ $sortIcon = function ($column) use ($sort, $order) {
                         <td><?= htmlspecialchars($item['manufacturer_name'] !== null ? $item['manufacturer_name'] : '—'); ?></td>
                         <td><?= htmlspecialchars($item['category_name'] !== null ? $item['category_name'] : '—'); ?></td>
                         <td class="text-end"><?= (int)$item['quantity']; ?></td>
+                        <td class="text-end">
+                            <?php if ($item['recommended_to_deliver'] === null): ?>
+                                —
+                            <?php else: ?>
+                                <?= (int)$item['recommended_to_deliver']; ?>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="7" class="text-center">Склад пуст</td></tr>
+                <tr><td colspan="8" class="text-center">Склад пуст</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
