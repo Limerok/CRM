@@ -46,7 +46,7 @@
                                 <th>Наименование</th>
                                 <th>Бренд</th>
                                 <th>Серия</th>
-                                <th>Закупочная стоимость (<?= htmlspecialchars($default_currency_code); ?>)</th>
+                                <th>Закупка (<?= htmlspecialchars($default_currency_code); ?>)</th>
                                 <th style="width: 160px;">Цена продажи</th>
                                 <th style="width: 140px;">Доходность (%)</th>
                                 <th>Доходность (<?= htmlspecialchars($default_currency_code); ?>)</th>
@@ -95,34 +95,34 @@
                                 <td class="profit-amount text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                                 <td class="placement-cost text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                                 <td>
-                                    <div class="input-group input-group-sm mb-1">
-                                        <input type="number" step="0.01" min="0" class="form-control text-end payment-value-input" value="<?= $paymentValue; ?>">
+                                    <div class="d-flex flex-column gap-1">
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end payment-value-input" value="<?= $paymentValue; ?>">
                                         <select class="form-select form-select-sm payment-type-select">
                                             <option value="percent" <?= $paymentType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $paymentType === 'fixed' ? 'selected' : ''; ?>>Сумма</option>
+                                            <option value="fixed" <?= $paymentType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
                                         </select>
+                                        <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                     </div>
-                                    <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                 </td>
                                 <td>
-                                    <div class="input-group input-group-sm mb-1">
-                                        <input type="number" step="0.01" min="0" class="form-control text-end logistics-value-input" value="<?= $logisticsValue; ?>">
+                                    <div class="d-flex flex-column gap-1">
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end logistics-value-input" value="<?= $logisticsValue; ?>">
                                         <select class="form-select form-select-sm logistics-type-select">
                                             <option value="percent" <?= $logisticsType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $logisticsType === 'fixed' ? 'selected' : ''; ?>>Сумма</option>
+                                            <option value="fixed" <?= $logisticsType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
                                         </select>
+                                        <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                     </div>
-                                    <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                 </td>
                                 <td>
-                                    <div class="input-group input-group-sm mb-1">
-                                        <input type="number" step="0.01" min="0" class="form-control text-end reviews-value-input" value="<?= $reviewsValue; ?>">
+                                    <div class="d-flex flex-column gap-1">
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end reviews-value-input" value="<?= $reviewsValue; ?>">
                                         <select class="form-select form-select-sm reviews-type-select">
                                             <option value="percent" <?= $reviewsType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $reviewsType === 'fixed' ? 'selected' : ''; ?>>Сумма</option>
+                                            <option value="fixed" <?= $reviewsType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
                                         </select>
+                                        <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                     </div>
-                                    <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
                                 </td>
                                 <td class="total-expenses text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                             </tr>
