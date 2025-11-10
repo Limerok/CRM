@@ -142,8 +142,11 @@ class ControllerSalesPricing extends Controller
         );
 
         if ($existing) {
-            $params['id'] = (int)$existing['id'];
-            $this->db->query('UPDATE product_pricing_defaults SET tax_percent = :tax_percent, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $params);
+            $paramsForUpdate = $params;
+            $paramsForUpdate['id'] = (int)$existing['id'];
+            unset($paramsForUpdate['source_id']);
+
+            $this->db->query('UPDATE product_pricing_defaults SET tax_percent = :tax_percent, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $paramsForUpdate);
         } else {
             $this->db->query('INSERT INTO product_pricing_defaults (source_id, tax_percent, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value) VALUES (:source_id, :tax_percent, :profit_percent, :payment_type, :payment_value, :logistics_type, :logistics_value, :reviews_type, :reviews_value)', $params);
         }
@@ -377,8 +380,11 @@ class ControllerSalesPricing extends Controller
             ));
 
             if ($existing) {
-                $params['id'] = (int)$existing['id'];
-                $this->db->query('UPDATE product_pricing SET sale_price = :sale_price, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $params);
+                $paramsForUpdate = $params;
+                $paramsForUpdate['id'] = (int)$existing['id'];
+                unset($paramsForUpdate['product_id'], $paramsForUpdate['source_id']);
+
+                $this->db->query('UPDATE product_pricing SET sale_price = :sale_price, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $paramsForUpdate);
             } else {
                 $this->db->query('INSERT INTO product_pricing (product_id, source_id, sale_price, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value) VALUES (:product_id, :source_id, :sale_price, :profit_percent, :payment_type, :payment_value, :logistics_type, :logistics_value, :reviews_type, :reviews_value)', $params);
             }
