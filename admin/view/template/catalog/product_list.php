@@ -81,6 +81,7 @@ $sortIcon = function ($column) use ($sort, $order) {
     }
     return $order === 'ASC' ? '<i class="bi bi-caret-up-fill ms-1"></i>' : '<i class="bi bi-caret-down-fill ms-1"></i>';
 };
+$currencyOptionsJson = htmlspecialchars(json_encode($currency_codes), ENT_QUOTES, 'UTF-8');
 ?>
 
 <form method="post" action="<?= admin_url('catalog/product', array('action' => 'delete')); ?>" id="product-bulk-form" class="card shadow-sm" onsubmit="return confirm('Удалить выбранные товары?');">
@@ -116,9 +117,62 @@ $sortIcon = function ($column) use ($sort, $order) {
                         <td><?= htmlspecialchars($product['series']); ?></td>
                         <td><?= htmlspecialchars($product['manufacturer_name']); ?></td>
                         <td><?= htmlspecialchars($product['category_name']); ?></td>
-                        <td><?= number_format((float)$product['purchase_price'], 2, '.', ' '); ?></td>
-                        <td><?= htmlspecialchars($product['purchase_currency']); ?></td>
-                        <td><?= (int)$product['sort_order']; ?></td>
+                        <?php
+                            $purchasePriceValue = isset($product['purchase_price']) ? (float)$product['purchase_price'] : 0.0;
+                            $purchasePriceRaw = rtrim(rtrim(number_format($purchasePriceValue, 6, '.', ''), '0'), '.');
+                            if ($purchasePriceRaw === '') {
+                                $purchasePriceRaw = '0';
+                            }
+                            $currencyValue = isset($product['purchase_currency']) ? strtoupper($product['purchase_currency']) : '';
+                            $sortOrderValue = isset($product['sort_order']) ? (int)$product['sort_order'] : 0;
+                        ?>
+                        <td>
+                            <span
+                                class="inline-editable"
+                                data-inline-edit
+                                data-update-url="<?= admin_url('catalog/product', array('action' => 'inlineUpdate')); ?>"
+                                data-id="<?= (int)$product['id']; ?>"
+                                data-field="purchase_price"
+                                data-type="number"
+                                data-step="0.01"
+                                data-min="0"
+                                data-value="<?= htmlspecialchars($purchasePriceRaw, ENT_QUOTES, 'UTF-8'); ?>"
+                                title="Изменить цену закупки"
+                            >
+                                <?= number_format($purchasePriceValue, 2, '.', ' '); ?>
+                            </span>
+                        </td>
+                        <td>
+                            <span
+                                class="inline-editable"
+                                data-inline-edit
+                                data-update-url="<?= admin_url('catalog/product', array('action' => 'inlineUpdate')); ?>"
+                                data-id="<?= (int)$product['id']; ?>"
+                                data-field="purchase_currency"
+                                data-type="select"
+                                data-options="<?= $currencyOptionsJson; ?>"
+                                data-value="<?= htmlspecialchars($currencyValue, ENT_QUOTES, 'UTF-8'); ?>"
+                                title="Изменить валюту закупки"
+                            >
+                                <?= $currencyValue ? htmlspecialchars($currencyValue) : '—'; ?>
+                            </span>
+                        </td>
+                        <td>
+                            <span
+                                class="inline-editable"
+                                data-inline-edit
+                                data-update-url="<?= admin_url('catalog/product', array('action' => 'inlineUpdate')); ?>"
+                                data-id="<?= (int)$product['id']; ?>"
+                                data-field="sort_order"
+                                data-type="number"
+                                data-step="1"
+                                data-min="0"
+                                data-value="<?= htmlspecialchars((string)$sortOrderValue, ENT_QUOTES, 'UTF-8'); ?>"
+                                title="Изменить сортировку"
+                            >
+                                <?= (int)$product['sort_order']; ?>
+                            </span>
+                        </td>
                         <td class="text-end">
                             <a href="<?= admin_url('catalog/product', array('action' => 'form', 'id' => $product['id'])); ?>" class="btn btn-sm btn-outline-secondary">Изменить</a>
                             <a href="<?= admin_url('catalog/product', array('action' => 'delete', 'id' => $product['id'])); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить товар?');">Удалить</a>

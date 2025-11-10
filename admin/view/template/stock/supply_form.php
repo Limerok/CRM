@@ -135,6 +135,18 @@ document.getElementById('supply-add-product').addEventListener('click', () => {
         return;
     }
     const tbody = document.querySelector('#supply-items tbody');
+    const existingInput = tbody.querySelector(`input[name="product_ids[]"][value="${supplySelectedProduct.id}"]`);
+    if (existingInput) {
+        const quantityInput = existingInput.closest('tr').querySelector('input[name="quantities[]"]');
+        if (quantityInput) {
+            quantityInput.value = quantity;
+            quantityInput.classList.add('supply-quantity-highlight');
+            quantityInput.focus();
+            setTimeout(() => quantityInput.classList.remove('supply-quantity-highlight'), 1500);
+        }
+        alert('Товар уже добавлен в поставку. Измените количество в существующей строке.');
+        return;
+    }
     const row = document.createElement('tr');
     row.innerHTML = `
         <td>

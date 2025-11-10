@@ -208,7 +208,7 @@ class ControllerSalesPricing extends Controller
         $productsRaw = $this->db->fetchAll("SELECT p.id, p.name, p.model, p.series, p.purchase_price, p.purchase_currency, p.category_id, m.name AS manufacturer_name
             FROM products p
             LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
-            ORDER BY p.name ASC");
+            ORDER BY p.sort_order ASC, p.name ASC");
 
         $pricingMap = $this->getProductPricingMap($selectedSourceId);
         $defaults = $this->getDefaultsForSource($selectedSourceId);

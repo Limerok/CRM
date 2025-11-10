@@ -102,4 +102,46 @@ class ControllerCatalogCategory extends Controller
 
         redirect(admin_url('catalog/category'));
     }
+
+    public function inlineUpdate()
+    {
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(array('success' => false, 'error' => 'Метод не поддерживается.'));
+            return;
+        }
+
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Не указана категория.'));
+            return;
+        }
+
+        $category = $this->db->fetch('SELECT id FROM categories WHERE id = :id', array('id' => $id));
+        if (!$category) {
+            http_response_code(404);
+            echo json_encode(array('success' => false, 'error' => 'Категория не найдена.'));
+            return;
+        }
+
+        $value = isset($_POST['value']) ? (int)$_POST['value'] : 0;
+        if ($value < 0) {
+            $value = 0;
+        }
+
+        $this->db->query('UPDATE categories SET sort_order = :sort_order WHERE id = :id', array(
+            'sort_order' => $value,
+            'id' => $id,
+        ));
+
+        echo json_encode(array(
+            'success' => true,
+            'value' => (string)$value,
+            'formatted_value' => (string)$value,
+        ));
+    }
 }
