@@ -28,6 +28,12 @@ class ControllerSystemSetting extends Controller
                 }
 
                 $activeTab = 'statuses';
+            } elseif ($form === 'orders') {
+                $allowNegativeStock = isset($_POST['allow_negative_stock']) ? 1 : 0;
+
+                set_setting('config_allow_negative_stock', $allowNegativeStock);
+
+                redirect(admin_url('system/setting', array('success' => 1, 'tab' => 'orders')));
             } else {
                 $currencyId = isset($_POST['config_currency_id']) ? (int)$_POST['config_currency_id'] : 0;
                 $lengthClassId = isset($_POST['config_length_class_id']) ? (int)$_POST['config_length_class_id'] : 0;
@@ -68,7 +74,8 @@ class ControllerSystemSetting extends Controller
         $weightClasses = $this->db->fetchAll('SELECT id, name, code FROM weight_classes ORDER BY sort_order ASC, name ASC');
         $orderStatuses = $this->db->fetchAll('SELECT id, name FROM order_statuses ORDER BY name ASC');
 
-        if ($activeTab !== 'statuses') {
+        $allowedTabs = array('localization', 'statuses', 'orders');
+        if (!in_array($activeTab, $allowedTabs, true)) {
             $activeTab = 'localization';
         }
 
@@ -81,6 +88,7 @@ class ControllerSystemSetting extends Controller
             'config_length_class_id' => (int)get_setting('config_length_class_id', 0),
             'config_weight_class_id' => (int)get_setting('config_weight_class_id', 0),
             'default_order_status_id' => (int)get_setting('config_default_order_status_id', 0),
+            'allow_negative_stock' => (int)get_setting('config_allow_negative_stock', 0) ? 1 : 0,
             'errors' => $errors,
             'success' => $success,
             'active_tab' => $activeTab,

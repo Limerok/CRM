@@ -1,4 +1,10 @@
-<?php $currentTab = (isset($active_tab) && $active_tab === 'statuses') ? 'statuses' : 'localization'; ?>
+<?php
+$availableTabs = array('localization', 'statuses', 'orders');
+$currentTab = 'localization';
+if (isset($active_tab) && in_array($active_tab, $availableTabs, true)) {
+    $currentTab = $active_tab;
+}
+?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Настройки</h1>
@@ -26,6 +32,9 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link<?= $currentTab === 'statuses' ? ' active' : ''; ?>" id="tab-statuses-tab" data-bs-toggle="tab" data-bs-target="#tab-statuses" type="button" role="tab">Статусы</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link<?= $currentTab === 'orders' ? ' active' : ''; ?>" id="tab-orders-tab" data-bs-toggle="tab" data-bs-target="#tab-orders" type="button" role="tab">Заказы</button>
             </li>
         </ul>
     </div>
@@ -80,6 +89,21 @@
                     </div>
                     <div class="col-12">
                         <div class="form-text">Управление списком статусов доступно на странице <a href="<?= admin_url('system/status'); ?>">"Статусы заказов"</a>.</div>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+            <div class="tab-pane fade<?= $currentTab === 'orders' ? ' show active' : ''; ?>" id="tab-orders" role="tabpanel" aria-labelledby="tab-orders-tab">
+                <form method="post" action="<?= admin_url('system/setting'); ?>" class="row g-4">
+                    <input type="hidden" name="form" value="orders">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="allowNegativeStock" name="allow_negative_stock" value="1" <?= !empty($allow_negative_stock) ? 'checked' : ''; ?>>
+                            <label class="form-check-label" for="allowNegativeStock">Разрешить оформление заказов при нехватке товара на складе</label>
+                        </div>
+                        <div class="form-text">При включении опции система позволит добавлять товары в продажу даже при отсутствии остатка, а количество на складе может стать отрицательным.</div>
                     </div>
                     <div class="col-12 text-end">
                         <button type="submit" class="btn btn-primary">Сохранить</button>

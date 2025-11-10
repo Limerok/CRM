@@ -23,6 +23,7 @@ class Migrator
         $this->createOrderSources();
         $this->createOrderStatuses();
         $this->createSales();
+        $this->createCategorySourceCommissions();
     }
 
     private function createUsers()
@@ -190,6 +191,7 @@ class Migrator
         }
 
         $this->ensureSetting('config_default_order_status_id', 0);
+        $this->ensureSetting('config_allow_negative_stock', 0);
     }
 
     private function ensureSetting($key, $value)
@@ -321,5 +323,20 @@ class Migrator
         if (!$existingSourceFk && $sourceColumn) {
             $this->db->query('ALTER TABLE sale_items ADD CONSTRAINT sale_items_source_fk FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE SET NULL');
         }
+    }
+
+    private function createCategorySourceCommissions()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS category_source_commissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category_id INT NOT NULL,
+            source_id INT NOT NULL,
+            commission_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_category_source (category_id, source_id),
+            CONSTRAINT fk_category_source_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+            CONSTRAINT fk_category_source_source FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 }

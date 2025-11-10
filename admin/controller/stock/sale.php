@@ -11,6 +11,7 @@ class ControllerStockSale extends Controller
         $orderStatuses = $this->fetchOrderStatuses();
         $defaultStatusId = (int)get_setting('config_default_order_status_id', 0);
         $defaultStatusName = $this->findStatusNameById($orderStatuses, $defaultStatusId);
+        $allowNegativeStock = $this->isNegativeStockAllowed();
 
         $formItems = array();
         $errors = array();
@@ -31,7 +32,7 @@ class ControllerStockSale extends Controller
                 }
             }
 
-            if (!$errors) {
+            if (!$errors && !$allowNegativeStock) {
                 $insufficient = $this->checkStockAvailability($formItems, $productCounts);
                 if ($insufficient) {
                     $errors[] = 'Недостаточно товара на складе: ' . implode(', ', $insufficient);
@@ -56,10 +57,7 @@ class ControllerStockSale extends Controller
                 }
 
                 foreach ($productCounts as $productId => $count) {
-                    $this->db->query('UPDATE stock_items SET quantity = quantity - :quantity WHERE product_id = :product_id', array(
-                        'quantity' => $count,
-                        'product_id' => $productId,
-                    ));
+                    $this->updateStockQuantity($productId, -$count);
                 }
 
                 $success = 'Продажа успешно сохранена.';
@@ -84,6 +82,7 @@ class ControllerStockSale extends Controller
             'statuses' => $orderStatuses,
             'default_status_id' => $defaultStatusId,
             'default_status_name' => $defaultStatusName,
+            'allow_negative_stock' => $allowNegativeStock,
             'page_title' => 'Продажа со склада',
             'submit_label' => 'Сохранить продажу',
             'form_action' => admin_url('stock/sale'),
@@ -160,9 +159,11 @@ class ControllerStockSale extends Controller
                     $diffs[$productId] = $newCount - $oldCount;
                 }
 
-                $insufficient = $this->checkStockAvailabilityForDiff($formItems, $diffs);
-                if ($insufficient) {
-                    $errors[] = 'Недостаточно товара на складе: ' . implode(', ', $insufficient);
+                if (!$allowNegativeStock) {
+                    $insufficient = $this->checkStockAvailabilityForDiff($formItems, $diffs);
+                    if ($insufficient) {
+                        $errors[] = 'Недостаточно товара на складе: ' . implode(', ', $insufficient);
+                    }
                 }
             }
 
@@ -182,25 +183,8 @@ class ControllerStockSale extends Controller
                 }
 
                 foreach ($diffs as $productId => $diff) {
-                    if ($diff > 0) {
-                        $this->db->query('UPDATE stock_items SET quantity = quantity - :quantity WHERE product_id = :product_id', array(
-                            'quantity' => $diff,
-                            'product_id' => $productId,
-                        ));
-                    } elseif ($diff < 0) {
-                        $returnQuantity = abs($diff);
-                        $existingStock = $this->db->fetch('SELECT quantity FROM stock_items WHERE product_id = :product_id', array('product_id' => $productId));
-                        if ($existingStock) {
-                            $this->db->query('UPDATE stock_items SET quantity = quantity + :quantity WHERE product_id = :product_id', array(
-                                'quantity' => $returnQuantity,
-                                'product_id' => $productId,
-                            ));
-                        } else {
-                            $this->db->query('INSERT INTO stock_items (product_id, quantity) VALUES (:product_id, :quantity)', array(
-                                'product_id' => $productId,
-                                'quantity' => $returnQuantity,
-                            ));
-                        }
+                    if ($diff !== 0) {
+                        $this->updateStockQuantity($productId, -$diff);
                     }
                 }
 
@@ -218,6 +202,7 @@ class ControllerStockSale extends Controller
             'statuses' => $orderStatuses,
             'default_status_id' => $defaultStatusId,
             'default_status_name' => $defaultStatusName,
+            'allow_negative_stock' => $allowNegativeStock,
             'page_title' => 'Редактирование продажи #' . $id,
             'submit_label' => 'Обновить продажу',
             'form_action' => admin_url('stock/sale', array('action' => 'edit', 'id' => $id)),
@@ -253,6 +238,41 @@ class ControllerStockSale extends Controller
         ));
     }
 
+    public function delete()
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect(admin_url('stock/sale'));
+        }
+
+        $id = isset($_POST['sale_id']) ? (int)$_POST['sale_id'] : 0;
+        if (!$id) {
+            redirect(admin_url('stock/sale'));
+        }
+
+        $sale = $this->db->fetch('SELECT id FROM sales WHERE id = :id', array('id' => $id));
+        if (!$sale) {
+            redirect(admin_url('stock/sale'));
+        }
+
+        $items = $this->db->fetchAll('SELECT product_id, COUNT(*) AS items_count FROM sale_items WHERE sale_id = :sale_id GROUP BY product_id', array(
+            'sale_id' => $id,
+        ));
+
+        foreach ($items as $item) {
+            $productId = isset($item['product_id']) ? (int)$item['product_id'] : 0;
+            $count = isset($item['items_count']) ? (int)$item['items_count'] : 0;
+            if ($productId > 0 && $count > 0) {
+                $this->updateStockQuantity($productId, $count);
+            }
+        }
+
+        $this->db->query('DELETE FROM sales WHERE id = :id', array('id' => $id));
+
+        redirect(admin_url('stock/sale', array('success' => 'Продажа удалена.')));
+    }
+
     private function fetchSources()
     {
         return $this->db->fetchAll('SELECT id, name FROM order_sources ORDER BY name ASC');
@@ -265,6 +285,30 @@ class ControllerStockSale extends Controller
             $map[(int)$source['id']] = $source;
         }
         return $map;
+    }
+
+    private function updateStockQuantity($productId, $change)
+    {
+        $productId = (int)$productId;
+        $change = (int)$change;
+
+        if ($productId <= 0 || $change === 0) {
+            return;
+        }
+
+        $existing = $this->db->fetch('SELECT quantity FROM stock_items WHERE product_id = :product_id', array('product_id' => $productId));
+
+        if ($existing) {
+            $this->db->query('UPDATE stock_items SET quantity = quantity + :change WHERE product_id = :product_id', array(
+                'change' => $change,
+                'product_id' => $productId,
+            ));
+        } else {
+            $this->db->query('INSERT INTO stock_items (product_id, quantity) VALUES (:product_id, :quantity)', array(
+                'product_id' => $productId,
+                'quantity' => $change,
+            ));
+        }
     }
 
     private function fetchOrderStatuses()
@@ -508,6 +552,11 @@ class ControllerStockSale extends Controller
         }
 
         return $this->checkStockAvailability($formItems, $positiveDiffs);
+    }
+
+    private function isNegativeStockAllowed()
+    {
+        return (int)get_setting('config_allow_negative_stock', 0) === 1;
     }
 
     private function findExistingValues($column, array $values, $excludeSaleId = null)
