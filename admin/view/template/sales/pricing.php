@@ -1,23 +1,36 @@
+<?php
+    $selectedSourceName = isset($selected_source_name) ? $selected_source_name : '';
+    $hasSources = !empty($sources);
+    $currentSourceId = isset($selected_source_id) ? (int)$selected_source_id : 0;
+?>
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3">Расчет цен по источникам</h1>
+    <h1 class="h3">
+        <?= $selectedSourceName !== '' ? 'Расчет цен ' . htmlspecialchars($selectedSourceName) : 'Расчет цен по источникам'; ?>
+    </h1>
 </div>
 
+<?php if ($hasSources): ?>
+    <ul class="nav nav-pills mb-3">
+        <?php foreach ($sources as $source): ?>
+            <?php $sourceId = (int)$source['id']; ?>
+            <?php $isActiveSource = ($currentSourceId === $sourceId); ?>
+            <li class="nav-item">
+                <a class="nav-link<?= $isActiveSource ? ' active' : ''; ?>" href="<?= admin_url('sales/pricing', array('source_id' => $sourceId)); ?>">
+                    <?= htmlspecialchars($source['name']); ?>
+                </a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+<?php else: ?>
+    <div class="alert alert-info">Добавьте источники заказов в разделе &laquo;Система &rarr; Источники заказов&raquo;, чтобы рассчитать цены.</div>
+<?php endif; ?>
+
+<?php if ($hasSources): ?>
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end">
-            <div class="col-12 col-lg-3">
-                <label class="form-label">Источник</label>
-                <select name="source_id" class="form-select">
-                    <option value="0">- Выберите источник -</option>
-                    <?php if (!empty($sources)): ?>
-                        <?php foreach ($sources as $source): ?>
-                            <?php $id = (int)$source['id']; ?>
-                            <option value="<?= $id; ?>" <?= (!empty($selected_source_id) && $selected_source_id === $id) ? 'selected' : ''; ?>><?= htmlspecialchars($source['name']); ?></option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
-            </div>
-            <div class="col-12 col-lg-3">
+            <input type="hidden" name="source_id" value="<?= $currentSourceId; ?>">
+            <div class="col-12 col-lg-4">
                 <label class="form-label">Прием платежа</label>
                 <div class="input-group">
                     <input type="number" step="0.01" min="0" name="payment_value" id="paymentValue" class="form-control pricing-expense-control" value="<?= isset($expenses['payment_value']) ? htmlspecialchars(number_format((float)$expenses['payment_value'], 2, '.', '')) : '0.00'; ?>">
@@ -27,7 +40,7 @@
                     </select>
                 </div>
             </div>
-            <div class="col-12 col-lg-3">
+            <div class="col-12 col-lg-4">
                 <label class="form-label">Логистика</label>
                 <div class="input-group">
                     <input type="number" step="0.01" min="0" name="logistics_value" id="logisticsValue" class="form-control pricing-expense-control" value="<?= isset($expenses['logistics_value']) ? htmlspecialchars(number_format((float)$expenses['logistics_value'], 2, '.', '')) : '0.00'; ?>">
@@ -37,7 +50,7 @@
                     </select>
                 </div>
             </div>
-            <div class="col-12 col-lg-3">
+            <div class="col-12 col-lg-4">
                 <label class="form-label">Баллы за отзывы</label>
                 <div class="input-group">
                     <input type="number" step="0.01" min="0" name="reviews_value" id="reviewsValue" class="form-control pricing-expense-control" value="<?= isset($expenses['reviews_value']) ? htmlspecialchars(number_format((float)$expenses['reviews_value'], 2, '.', '')) : '0.00'; ?>">
@@ -57,9 +70,6 @@
 <?php if (empty($products)): ?>
     <div class="alert alert-info">В каталоге пока нет товаров для расчета.</div>
 <?php else: ?>
-    <?php if (empty($selected_source_id)): ?>
-        <div class="alert alert-info">Выберите источник, чтобы учесть комиссию за размещение.</div>
-    <?php endif; ?>
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
@@ -108,6 +118,7 @@
             </div>
         </div>
     </div>
+<?php endif; ?>
 <?php endif; ?>
 
 <script>
@@ -195,33 +206,49 @@
         rows.forEach((row) => calculateRow(row));
     }
 
+    function updateExpensesFromControl(control) {
+        const type = control.getAttribute('id');
+        switch (type) {
+            case 'paymentType':
+                expenses.paymentType = control.value;
+                break;
+            case 'paymentValue':
+                expenses.paymentValue = parseValue(control.value);
+                break;
+            case 'logisticsType':
+                expenses.logisticsType = control.value;
+                break;
+            case 'logisticsValue':
+                expenses.logisticsValue = parseValue(control.value);
+                break;
+            case 'reviewsType':
+                expenses.reviewsType = control.value;
+                break;
+            case 'reviewsValue':
+                expenses.reviewsValue = parseValue(control.value);
+                break;
+            default:
+                break;
+        }
+    }
+
     if (expenseControls) {
         expenseControls.forEach((control) => {
-            control.addEventListener('input', () => {
-                expenses.paymentValue = parseValue(document.getElementById('paymentValue') ? document.getElementById('paymentValue').value : '0');
-                expenses.paymentType = document.getElementById('paymentType') ? document.getElementById('paymentType').value : 'percent';
-                expenses.logisticsValue = parseValue(document.getElementById('logisticsValue') ? document.getElementById('logisticsValue').value : '0');
-                expenses.logisticsType = document.getElementById('logisticsType') ? document.getElementById('logisticsType').value : 'percent';
-                expenses.reviewsValue = parseValue(document.getElementById('reviewsValue') ? document.getElementById('reviewsValue').value : '0');
-                expenses.reviewsType = document.getElementById('reviewsType') ? document.getElementById('reviewsType').value : 'percent';
+            const handler = () => {
+                updateExpensesFromControl(control);
                 recalculateAll();
-            });
-            control.addEventListener('change', () => {
-                expenses.paymentValue = parseValue(document.getElementById('paymentValue') ? document.getElementById('paymentValue').value : '0');
-                expenses.paymentType = document.getElementById('paymentType') ? document.getElementById('paymentType').value : 'percent';
-                expenses.logisticsValue = parseValue(document.getElementById('logisticsValue') ? document.getElementById('logisticsValue').value : '0');
-                expenses.logisticsType = document.getElementById('logisticsType') ? document.getElementById('logisticsType').value : 'percent';
-                expenses.reviewsValue = parseValue(document.getElementById('reviewsValue') ? document.getElementById('reviewsValue').value : '0');
-                expenses.reviewsType = document.getElementById('reviewsType') ? document.getElementById('reviewsType').value : 'percent';
-                recalculateAll();
-            });
+            };
+            control.addEventListener('input', handler);
+            control.addEventListener('change', handler);
         });
     }
 
-    const saleInputs = table.querySelectorAll('.sale-price-input');
-    saleInputs.forEach((input) => {
+    table.querySelectorAll('.sale-price-input').forEach((input) => {
         input.addEventListener('input', () => {
-            calculateRow(input.closest('tr'));
+            const row = input.closest('tr');
+            if (row) {
+                calculateRow(row);
+            }
         });
     });
 
