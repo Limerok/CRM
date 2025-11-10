@@ -20,6 +20,11 @@
     <?php if (!empty($success)): ?>
         <div class="alert alert-success"><?= htmlspecialchars($success); ?></div>
     <?php endif; ?>
+    <?php if (!empty($allow_negative_stock)): ?>
+        <div class="alert alert-warning">
+            Включено оформление заказов при нехватке товара на складе. Количество может уйти в отрицательное значение при сохранении продажи.
+        </div>
+    <?php endif; ?>
     <?php
         $statuses = isset($statuses) && is_array($statuses) ? $statuses : array();
         $defaultStatusName = isset($default_status_name) ? $default_status_name : '';
@@ -165,6 +170,10 @@
                                     <div class="btn-group btn-group-sm">
                                         <a href="<?= admin_url('stock/sale', array('action' => 'view', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-secondary">Подробнее</a>
                                         <a href="<?= admin_url('stock/sale', array('action' => 'edit', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-primary">Редактировать</a>
+                                        <form method="post" action="<?= admin_url('stock/sale', array('action' => 'delete')); ?>" class="d-inline">
+                                            <input type="hidden" name="sale_id" value="<?= (int)$saleItem['id']; ?>">
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Удалить продажу #<?= (int)$saleItem['id']; ?>?');">Удалить</button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

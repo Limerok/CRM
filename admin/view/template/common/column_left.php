@@ -3,12 +3,14 @@ $route = isset($_GET['route']) ? $_GET['route'] : 'common/dashboard';
 $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
 $catalogRoutes = array('catalog/product', 'catalog/category', 'catalog/manufacturer');
-$stockRoutes = array('stock/supply', 'stock/warehouse', 'stock/sale');
+$stockRoutes = array('stock/supply', 'stock/warehouse');
+$salesRoutes = array('stock/sale', 'sales/pricing', 'sales/commission');
 $systemRoutes = array('system/setting', 'system/source', 'system/status', 'system/currency', 'system/length', 'system/weight');
 $systemLocalizationRoutes = array('system/currency', 'system/length', 'system/weight', 'system/status');
 
 $catalogActive = in_array($route, $catalogRoutes, true);
 $stockActive = in_array($route, $stockRoutes, true);
+$salesActive = in_array($route, $salesRoutes, true);
 $systemActive = in_array($route, $systemRoutes, true);
 $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
 ?>
@@ -34,7 +36,16 @@ $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/supply' && $action === 'create') ? ' active' : ''; ?>" href="<?= admin_url('stock/supply', array('action' => 'create')); ?>">Создать поставку</a></li>
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/supply' && $action === 'history') ? ' active' : ''; ?>" href="<?= admin_url('stock/supply', array('action' => 'history')); ?>">История поставок</a></li>
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/warehouse') ? ' active' : ''; ?>" href="<?= admin_url('stock/warehouse'); ?>">Склад</a></li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link<?= $salesActive ? ' active' : ''; ?>" href="#salesMenu" data-bs-toggle="collapse" role="button" aria-expanded="<?= $salesActive ? 'true' : 'false'; ?>" aria-controls="salesMenu"><i class="bi bi-cart-check"></i> Продажи</a>
+                    <div class="collapse<?= $salesActive ? ' show' : ''; ?>" id="salesMenu">
+                        <ul class="nav flex-column ms-3">
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/sale') ? ' active' : ''; ?>" href="<?= admin_url('stock/sale'); ?>">Продажа</a></li>
+                            <li class="nav-item"><a class="nav-link<?= ($route === 'sales/pricing') ? ' active' : ''; ?>" href="<?= admin_url('sales/pricing'); ?>">Расчет цен (источники)</a></li>
+                            <li class="nav-item"><a class="nav-link<?= ($route === 'sales/commission') ? ' active' : ''; ?>" href="<?= admin_url('sales/commission'); ?>">Комиссия по категориям</a></li>
                         </ul>
                     </div>
                 </li>
