@@ -20,11 +20,13 @@ class Migrator
         $this->createSettings();
         $this->createSupplies();
         $this->createStock();
+        $this->createRecommendedStock();
         $this->createOrderSources();
         $this->createOrderStatuses();
         $this->createSales();
         $this->createCategorySourceCommissions();
         $this->createProductPricing();
+        $this->createProductPricingDefaults();
     }
 
     private function createUsers()
@@ -233,6 +235,16 @@ class Migrator
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
+    private function createRecommendedStock()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS product_recommended_stock (
+            product_id INT PRIMARY KEY,
+            recommended_quantity INT DEFAULT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
     private function createOrderSources()
     {
         $this->db->query("CREATE TABLE IF NOT EXISTS order_sources (
@@ -270,6 +282,8 @@ class Migrator
             order_status VARCHAR(128) DEFAULT NULL,
             task_number VARCHAR(64) DEFAULT NULL,
             order_number VARCHAR(64) DEFAULT NULL,
+            seller_price DECIMAL(15,4) DEFAULT NULL,
+            source_sale_price DECIMAL(15,4) DEFAULT NULL,
             FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
             FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE SET NULL
@@ -298,6 +312,16 @@ class Migrator
         $orderNumberColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'order_number'");
         if (!$orderNumberColumn) {
             $this->db->query('ALTER TABLE sale_items ADD COLUMN order_number VARCHAR(64) DEFAULT NULL AFTER task_number');
+        }
+
+        $sellerPriceColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'seller_price'");
+        if (!$sellerPriceColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN seller_price DECIMAL(15,4) DEFAULT NULL AFTER order_number');
+        }
+
+        $sourceSalePriceColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'source_sale_price'");
+        if (!$sourceSalePriceColumn) {
+            $this->db->query('ALTER TABLE sale_items ADD COLUMN source_sale_price DECIMAL(15,4) DEFAULT NULL AFTER seller_price');
         }
 
         $quantityColumn = $this->db->fetch("SHOW COLUMNS FROM sale_items LIKE 'quantity'");
@@ -348,13 +372,13 @@ class Migrator
             product_id INT NOT NULL,
             source_id INT NOT NULL,
             sale_price DECIMAL(15,4) NOT NULL DEFAULT 0,
-            profit_percent DECIMAL(9,4) NOT NULL DEFAULT 0,
-            payment_type VARCHAR(16) NOT NULL DEFAULT 'percent',
-            payment_value DECIMAL(15,4) NOT NULL DEFAULT 0,
-            logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent',
-            logistics_value DECIMAL(15,4) NOT NULL DEFAULT 0,
-            reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent',
-            reviews_value DECIMAL(15,4) NOT NULL DEFAULT 0,
+            profit_percent DECIMAL(9,4) DEFAULT NULL,
+            payment_type VARCHAR(16) DEFAULT NULL,
+            payment_value DECIMAL(15,4) DEFAULT NULL,
+            logistics_type VARCHAR(16) DEFAULT NULL,
+            logistics_value DECIMAL(15,4) DEFAULT NULL,
+            reviews_type VARCHAR(16) DEFAULT NULL,
+            reviews_value DECIMAL(15,4) DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_product_source (product_id, source_id),
@@ -364,42 +388,80 @@ class Migrator
 
         $profitPercentColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'profit_percent'");
         if (!$profitPercentColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN profit_percent DECIMAL(9,4) NOT NULL DEFAULT 0 AFTER sale_price");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN profit_percent DECIMAL(9,4) DEFAULT NULL AFTER sale_price");
+        } elseif (isset($profitPercentColumn['Null']) && strtoupper($profitPercentColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY profit_percent DECIMAL(9,4) DEFAULT NULL");
         }
 
         $paymentTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'payment_type'");
         if (!$paymentTypeColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER sale_price");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_type VARCHAR(16) DEFAULT NULL AFTER sale_price");
+        } elseif (isset($paymentTypeColumn['Null']) && strtoupper($paymentTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY payment_type VARCHAR(16) DEFAULT NULL");
         }
 
         $paymentValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'payment_value'");
         if (!$paymentValueColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER payment_type");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_value DECIMAL(15,4) DEFAULT NULL AFTER payment_type");
+        } elseif (isset($paymentValueColumn['Null']) && strtoupper($paymentValueColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY payment_value DECIMAL(15,4) DEFAULT NULL");
         }
 
         $logisticsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'logistics_type'");
         if (!$logisticsTypeColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER payment_value");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_type VARCHAR(16) DEFAULT NULL AFTER payment_value");
+        } elseif (isset($logisticsTypeColumn['Null']) && strtoupper($logisticsTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY logistics_type VARCHAR(16) DEFAULT NULL");
         }
 
         $logisticsValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'logistics_value'");
         if (!$logisticsValueColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER logistics_type");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_value DECIMAL(15,4) DEFAULT NULL AFTER logistics_type");
+        } elseif (isset($logisticsValueColumn['Null']) && strtoupper($logisticsValueColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY logistics_value DECIMAL(15,4) DEFAULT NULL");
         }
 
         $reviewsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'reviews_type'");
         if (!$reviewsTypeColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER logistics_value");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_type VARCHAR(16) DEFAULT NULL AFTER logistics_value");
+        } elseif (isset($reviewsTypeColumn['Null']) && strtoupper($reviewsTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY reviews_type VARCHAR(16) DEFAULT NULL");
         }
 
         $reviewsValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'reviews_value'");
         if (!$reviewsValueColumn) {
-            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER reviews_type");
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_value DECIMAL(15,4) DEFAULT NULL AFTER reviews_type");
+        } elseif (isset($reviewsValueColumn['Null']) && strtoupper($reviewsValueColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing MODIFY reviews_value DECIMAL(15,4) DEFAULT NULL");
         }
 
         $uniqueIndex = $this->db->fetch("SHOW INDEX FROM product_pricing WHERE Key_name = 'uq_product_source'");
         if (!$uniqueIndex) {
             $this->db->query('ALTER TABLE product_pricing ADD UNIQUE KEY uq_product_source (product_id, source_id)');
+        }
+    }
+
+    private function createProductPricingDefaults()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS product_pricing_defaults (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            source_id INT NOT NULL UNIQUE,
+            tax_percent DECIMAL(9,4) NOT NULL DEFAULT 0,
+            profit_percent DECIMAL(9,4) DEFAULT NULL,
+            payment_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            payment_value DECIMAL(15,4) DEFAULT NULL,
+            logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            logistics_value DECIMAL(15,4) DEFAULT NULL,
+            reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            reviews_value DECIMAL(15,4) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT fk_pricing_defaults_source FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $taxPercentColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'tax_percent'");
+        if (!$taxPercentColumn) {
+            $this->db->query("ALTER TABLE product_pricing_defaults ADD COLUMN tax_percent DECIMAL(9,4) NOT NULL DEFAULT 0 AFTER source_id");
         }
     }
 }

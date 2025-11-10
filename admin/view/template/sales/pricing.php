@@ -2,6 +2,15 @@
     $selectedSourceName = isset($selected_source_name) ? $selected_source_name : '';
     $hasSources = !empty($sources);
     $currentSourceId = isset($selected_source_id) ? (int)$selected_source_id : 0;
+    $defaults = isset($pricing_defaults) && is_array($pricing_defaults) ? $pricing_defaults : array();
+    $defaultTaxPercent = isset($defaults['tax_percent']) ? (float)$defaults['tax_percent'] : 0.0;
+    $defaultProfitPercent = isset($defaults['profit_percent']) && $defaults['profit_percent'] !== null ? (float)$defaults['profit_percent'] : null;
+    $defaultPaymentType = isset($defaults['payment_type']) ? $defaults['payment_type'] : 'percent';
+    $defaultPaymentValue = isset($defaults['payment_value']) && $defaults['payment_value'] !== null ? (float)$defaults['payment_value'] : null;
+    $defaultLogisticsType = isset($defaults['logistics_type']) ? $defaults['logistics_type'] : 'percent';
+    $defaultLogisticsValue = isset($defaults['logistics_value']) && $defaults['logistics_value'] !== null ? (float)$defaults['logistics_value'] : null;
+    $defaultReviewsType = isset($defaults['reviews_type']) ? $defaults['reviews_type'] : 'percent';
+    $defaultReviewsValue = isset($defaults['reviews_value']) && $defaults['reviews_value'] !== null ? (float)$defaults['reviews_value'] : null;
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -29,6 +38,56 @@
 <?php endif; ?>
 
 <?php if ($hasSources): ?>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Значения по умолчанию</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label">Налог %</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="default-tax-percent" value="<?= htmlspecialchars(number_format($defaultTaxPercent, 2, '.', '')); ?>">
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label">Доходность (%)</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="default-profit-percent" value="<?= $defaultProfitPercent !== null ? htmlspecialchars(number_format($defaultProfitPercent, 2, '.', '')) : ''; ?>" placeholder="<?= $defaultProfitPercent === null ? '' : ''; ?>">
+                </div>
+            </div>
+            <div class="row g-3 align-items-end mt-0">
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label class="form-label">Прием платежа</label>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" id="default-payment-value" value="<?= $defaultPaymentValue !== null ? htmlspecialchars(number_format($defaultPaymentValue, 2, '.', '')) : ''; ?>">
+                        <select class="form-select form-select-sm" id="default-payment-type">
+                            <option value="percent"<?= $defaultPaymentType === 'percent' ? ' selected' : ''; ?>>%</option>
+                            <option value="fixed"<?= $defaultPaymentType === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+                        </select>
+                    </div>
+                    <div class="text-muted small mt-1">Валюта: <?= htmlspecialchars($default_currency_code); ?></div>
+                </div>
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label class="form-label">Логистика</label>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" id="default-logistics-value" value="<?= $defaultLogisticsValue !== null ? htmlspecialchars(number_format($defaultLogisticsValue, 2, '.', '')) : ''; ?>">
+                        <select class="form-select form-select-sm" id="default-logistics-type">
+                            <option value="percent"<?= $defaultLogisticsType === 'percent' ? ' selected' : ''; ?>>%</option>
+                            <option value="fixed"<?= $defaultLogisticsType === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label class="form-label">Баллы за отзывы</label>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" id="default-reviews-value" value="<?= $defaultReviewsValue !== null ? htmlspecialchars(number_format($defaultReviewsValue, 2, '.', '')) : ''; ?>">
+                        <select class="form-select form-select-sm" id="default-reviews-type">
+                            <option value="percent"<?= $defaultReviewsType === 'percent' ? ' selected' : ''; ?>>%</option>
+                            <option value="fixed"<?= $defaultReviewsType === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-0 mt-3">Если у конкретного товара не указаны значения, будут использованы параметры по умолчанию.</p>
+        </div>
+    </div>
+
     <?php if (empty($products)): ?>
         <div class="alert alert-info">В каталоге пока нет товаров для расчета.</div>
     <?php else: ?>
@@ -48,7 +107,7 @@
                                 <th>Серия</th>
                                 <th>Закупка (<?= htmlspecialchars($default_currency_code); ?>)</th>
                                 <th style="width: 160px;">Цена продажи</th>
-                                <th style="width: 140px;">Доходность (%)</th>
+                                <th style="width: 180px;">Доходность (%)</th>
                                 <th>Доходность (<?= htmlspecialchars($default_currency_code); ?>)</th>
                                 <th>Размещение</th>
                                 <th>Прием платежа</th>
@@ -63,23 +122,38 @@
                                 $purchaseCost = isset($product['purchase_cost']) ? (float)$product['purchase_cost'] : 0.0;
                                 $salePriceRaw = array_key_exists('sale_price', $product) ? $product['sale_price'] : null;
                                 $salePriceValue = ($salePriceRaw !== null) ? number_format((float)$salePriceRaw, 2, '.', '') : number_format($purchaseCost, 2, '.', '');
-                                $profitPercentRaw = array_key_exists('profit_percent', $product) ? $product['profit_percent'] : 0.0;
-                                $profitPercentValue = number_format((float)$profitPercentRaw, 2, '.', '');
-                                $paymentValueRaw = array_key_exists('payment_value', $product) ? $product['payment_value'] : 0.0;
-                                $logisticsValueRaw = array_key_exists('logistics_value', $product) ? $product['logistics_value'] : 0.0;
-                                $reviewsValueRaw = array_key_exists('reviews_value', $product) ? $product['reviews_value'] : 0.0;
-                                $paymentValue = number_format((float)$paymentValueRaw, 2, '.', '');
-                                $logisticsValue = number_format((float)$logisticsValueRaw, 2, '.', '');
-                                $reviewsValue = number_format((float)$reviewsValueRaw, 2, '.', '');
-                                $paymentType = isset($product['payment_type']) ? $product['payment_type'] : 'percent';
-                                $logisticsType = isset($product['logistics_type']) ? $product['logistics_type'] : 'percent';
-                                $reviewsType = isset($product['reviews_type']) ? $product['reviews_type'] : 'percent';
+                                $profitPercentRaw = array_key_exists('profit_percent', $product) ? $product['profit_percent'] : null;
+                                $profitPercentValue = ($profitPercentRaw !== null) ? number_format((float)$profitPercentRaw, 2, '.', '') : '';
+                                $paymentValueRaw = array_key_exists('payment_value', $product) ? $product['payment_value'] : null;
+                                $logisticsValueRaw = array_key_exists('logistics_value', $product) ? $product['logistics_value'] : null;
+                                $reviewsValueRaw = array_key_exists('reviews_value', $product) ? $product['reviews_value'] : null;
+                                $paymentValue = ($paymentValueRaw !== null) ? number_format((float)$paymentValueRaw, 2, '.', '') : '';
+                                $logisticsValue = ($logisticsValueRaw !== null) ? number_format((float)$logisticsValueRaw, 2, '.', '') : '';
+                                $reviewsValue = ($reviewsValueRaw !== null) ? number_format((float)$reviewsValueRaw, 2, '.', '') : '';
+                                $paymentType = isset($product['payment_type']) ? $product['payment_type'] : null;
+                                $logisticsType = isset($product['logistics_type']) ? $product['logistics_type'] : null;
+                                $reviewsType = isset($product['reviews_type']) ? $product['reviews_type'] : null;
+                                $hasProfitOverride = $profitPercentRaw !== null;
+                                $hasPaymentOverride = ($paymentValueRaw !== null) || ($paymentType !== null);
+                                $hasLogisticsOverride = ($logisticsValueRaw !== null) || ($logisticsType !== null);
+                                $hasReviewsOverride = ($reviewsValueRaw !== null) || ($reviewsType !== null);
+                                $paymentSelectValue = $paymentType !== null ? $paymentType : '';
+                                $logisticsSelectValue = $logisticsType !== null ? $logisticsType : '';
+                                $reviewsSelectValue = $reviewsType !== null ? $reviewsType : '';
                             ?>
-                            <tr data-product-id="<?= (int)$product['id']; ?>" data-purchase-cost="<?= htmlspecialchars(number_format($purchaseCost, 6, '.', '')); ?>" data-commission-percent="<?= htmlspecialchars(number_format((float)$product['commission_percent'], 4, '.', '')); ?>">
+                            <tr
+                                data-product-id="<?= (int)$product['id']; ?>"
+                                data-purchase-cost="<?= htmlspecialchars(number_format($purchaseCost, 6, '.', '')); ?>"
+                                data-commission-percent="<?= htmlspecialchars(number_format((float)$product['commission_percent'], 4, '.', '')); ?>"
+                                data-profit-provided="<?= $hasProfitOverride ? '1' : '0'; ?>"
+                                data-payment-provided="<?= $hasPaymentOverride ? '1' : '0'; ?>"
+                                data-logistics-provided="<?= $hasLogisticsOverride ? '1' : '0'; ?>"
+                                data-reviews-provided="<?= $hasReviewsOverride ? '1' : '0'; ?>"
+                            >
                                 <td><?= htmlspecialchars($product['name']); ?></td>
                                 <td><?= !empty($product['manufacturer']) ? htmlspecialchars($product['manufacturer']) : '—'; ?></td>
                                 <td><?= !empty($product['series']) ? htmlspecialchars($product['series']) : '—'; ?></td>
-                                <td class="purchase-cost text-nowrap"><?= number_format($purchaseCost, 2, '.', ' '); ?> <?= htmlspecialchars($default_currency_code); ?></td>
+                                <td class="purchase-cost text-nowrap"></td>
                                 <td>
                                     <div class="input-group input-group-sm">
                                         <input type="number" step="0.01" min="0" class="form-control text-end sale-price-input" value="<?= $salePriceValue; ?>">
@@ -87,42 +161,59 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control text-end profit-percent-input" value="<?= $profitPercentValue; ?>">
-                                        <span class="input-group-text">%</span>
+                                    <div class="d-flex flex-column gap-1">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" min="0" class="form-control text-end profit-percent-input" value="<?= $profitPercentValue; ?>" placeholder="<?= $defaultProfitPercent !== null ? htmlspecialchars(number_format($defaultProfitPercent, 2, '.', '')) : ''; ?>">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <div class="text-muted small profit-percent-info"></div>
                                     </div>
                                 </td>
                                 <td class="profit-amount text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                                 <td class="placement-cost text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end payment-value-input" value="<?= $paymentValue; ?>">
-                                        <select class="form-select form-select-sm payment-type-select">
-                                            <option value="percent" <?= $paymentType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $paymentType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+        <input type="number" step="0.01" min="0"
+               class="form-control form-control-sm text-end payment-value-input"
+               value="<?= $paymentValue; ?>"
+               placeholder="<?= $defaultPaymentValue !== null ? htmlspecialchars(number_format($defaultPaymentValue, 2, '.', '')) : '0.00'; ?>">
+        <select class="form-select form-select-sm payment-type-select">
+            <option value="">По умолчанию</option>
+            <option value="percent"<?= $paymentSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+            <option value="fixed"<?= $paymentSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+        </select>
+        <div class="text-muted small payment-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+    </div>  
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end logistics-value-input" value="<?= $logisticsValue; ?>">
-                                        <select class="form-select form-select-sm logistics-type-select">
-                                            <option value="percent" <?= $logisticsType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $logisticsType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+    <input type="number" step="0.01" min="0"
+           class="form-control form-control-sm text-end logistics-value-input"
+           value="<?= $logisticsValue; ?>"
+           placeholder="<?= $defaultLogisticsValue !== null ? htmlspecialchars(number_format($defaultLogisticsValue, 2, '.', '')) : '0.00'; ?>">
+    <select class="form-select form-select-sm logistics-type-select">
+        <option value="">По умолчанию</option>
+        <option value="percent"<?= $logisticsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+        <option value="fixed"<?= $logisticsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+    </select>
+    <div class="text-muted small logistics-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+</div>
+
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end reviews-value-input" value="<?= $reviewsValue; ?>">
-                                        <select class="form-select form-select-sm reviews-type-select">
-                                            <option value="percent" <?= $reviewsType === 'percent' ? 'selected' : ''; ?>>%</option>
-                                            <option value="fixed" <?= $reviewsType === 'fixed' ? 'selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
-                                        </select>
-                                        <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
-                                    </div>
+    <input type="number" step="0.01" min="0"
+           class="form-control form-control-sm text-end reviews-value-input"
+           value="<?= $reviewsValue; ?>"
+           placeholder="<?= $defaultReviewsValue !== null ? htmlspecialchars(number_format($defaultReviewsValue, 2, '.', '')) : '0.00'; ?>">
+    <select class="form-select form-select-sm reviews-type-select">
+        <option value="">По умолчанию</option>
+        <option value="percent"<?= $reviewsSelectValue === 'percent' ? ' selected' : ''; ?>>%</option>
+        <option value="fixed"<?= $reviewsSelectValue === 'fixed' ? ' selected' : ''; ?>><?= htmlspecialchars($default_currency_code); ?></option>
+    </select>
+    <div class="text-muted small reviews-cost">0 <?= htmlspecialchars($default_currency_code); ?></div>
+</div>
+
                                 </td>
                                 <td class="total-expenses text-nowrap">0 <?= htmlspecialchars($default_currency_code); ?></td>
                             </tr>
@@ -134,23 +225,69 @@
         </div>
     <?php endif; ?>
 <?php endif; ?>
-
 <script>
 (function() {
     const currencyCode = <?= json_encode($default_currency_code); ?>;
     const selectedSourceId = <?= (int)$currentSourceId; ?>;
     const saveUrl = <?= json_encode(admin_url('sales/pricing', array('action' => 'save'))); ?>;
+    const defaultsData = <?= json_encode(array(
+        'tax_percent' => $defaultTaxPercent,
+        'profit_percent' => $defaultProfitPercent,
+        'payment_type' => $defaultPaymentType,
+        'payment_value' => $defaultPaymentValue,
+        'logistics_type' => $defaultLogisticsType,
+        'logistics_value' => $defaultLogisticsValue,
+        'reviews_type' => $defaultReviewsType,
+        'reviews_value' => $defaultReviewsValue,
+    ), JSON_UNESCAPED_UNICODE); ?>;
     const table = document.getElementById('pricing-table');
     const saveButton = document.getElementById('pricing-save-button');
     const alertBox = document.getElementById('pricing-alert');
+
+    const defaultControls = {
+        tax: document.getElementById('default-tax-percent'),
+        profit: document.getElementById('default-profit-percent'),
+        paymentValue: document.getElementById('default-payment-value'),
+        paymentType: document.getElementById('default-payment-type'),
+        logisticsValue: document.getElementById('default-logistics-value'),
+        logisticsType: document.getElementById('default-logistics-type'),
+        reviewsValue: document.getElementById('default-reviews-value'),
+        reviewsType: document.getElementById('default-reviews-type'),
+    };
+
+    const pricingDefaults = {
+        tax_percent: typeof defaultsData.tax_percent === 'number' ? defaultsData.tax_percent : parseNumber(defaultsData.tax_percent),
+        profit_percent: defaultsData.profit_percent !== null ? parseNumber(defaultsData.profit_percent) : null,
+        payment_type: defaultsData.payment_type || 'percent',
+        payment_value: defaultsData.payment_value !== null ? parseNumber(defaultsData.payment_value) : null,
+        logistics_type: defaultsData.logistics_type || 'percent',
+        logistics_value: defaultsData.logistics_value !== null ? parseNumber(defaultsData.logistics_value) : null,
+        reviews_type: defaultsData.reviews_type || 'percent',
+        reviews_value: defaultsData.reviews_value !== null ? parseNumber(defaultsData.reviews_value) : null,
+    };
 
     if (!table) {
         return;
     }
 
-    function parseValue(value) {
+    function parseNumber(value) {
+        if (value === null || value === undefined || value === '') {
+            return 0;
+        }
         const number = parseFloat(value);
         return Number.isNaN(number) ? 0 : number;
+    }
+
+    function parseNullableNumber(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+        const trimmed = String(value).trim();
+        if (trimmed === '') {
+            return null;
+        }
+        const number = parseFloat(trimmed);
+        return Number.isNaN(number) ? null : number;
     }
 
     function formatCurrency(value) {
@@ -165,41 +302,97 @@
         input.classList.toggle('text-danger', profitAmount < 0);
     }
 
+    function updateDefaultsFromInputs() {
+        if (defaultControls.tax) {
+            const value = parseNumber(defaultControls.tax.value);
+            pricingDefaults.tax_percent = value >= 0 ? value : 0;
+        }
+        if (defaultControls.profit) {
+            const value = parseNullableNumber(defaultControls.profit.value);
+            pricingDefaults.profit_percent = value !== null && value >= 0 ? value : (value === null ? null : 0);
+        }
+        if (defaultControls.paymentType) {
+            pricingDefaults.payment_type = defaultControls.paymentType.value === 'fixed' ? 'fixed' : 'percent';
+        }
+        if (defaultControls.paymentValue) {
+            const value = parseNullableNumber(defaultControls.paymentValue.value);
+            pricingDefaults.payment_value = value !== null && value >= 0 ? value : (value === null ? null : 0);
+        }
+        if (defaultControls.logisticsType) {
+            pricingDefaults.logistics_type = defaultControls.logisticsType.value === 'fixed' ? 'fixed' : 'percent';
+        }
+        if (defaultControls.logisticsValue) {
+            const value = parseNullableNumber(defaultControls.logisticsValue.value);
+            pricingDefaults.logistics_value = value !== null && value >= 0 ? value : (value === null ? null : 0);
+        }
+        if (defaultControls.reviewsType) {
+            pricingDefaults.reviews_type = defaultControls.reviewsType.value === 'fixed' ? 'fixed' : 'percent';
+        }
+        if (defaultControls.reviewsValue) {
+            const value = parseNullableNumber(defaultControls.reviewsValue.value);
+            pricingDefaults.reviews_value = value !== null && value >= 0 ? value : (value === null ? null : 0);
+        }
+        updatePlaceholders();
+    }
+
+    function updatePlaceholders() {
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach((row) => {
+            const profitInput = row.querySelector('.profit-percent-input');
+            if (profitInput) {
+                profitInput.placeholder = pricingDefaults.profit_percent !== null ? pricingDefaults.profit_percent.toFixed(2) : '';
+            }
+            const paymentInput = row.querySelector('.payment-value-input');
+            if (paymentInput) {
+                paymentInput.placeholder = pricingDefaults.payment_value !== null ? pricingDefaults.payment_value.toFixed(2) : '0.00';
+            }
+            const logisticsInput = row.querySelector('.logistics-value-input');
+            if (logisticsInput) {
+                logisticsInput.placeholder = pricingDefaults.logistics_value !== null ? pricingDefaults.logistics_value.toFixed(2) : '0.00';
+            }
+            const reviewsInput = row.querySelector('.reviews-value-input');
+            if (reviewsInput) {
+                reviewsInput.placeholder = pricingDefaults.reviews_value !== null ? pricingDefaults.reviews_value.toFixed(2) : '0.00';
+            }
+        });
+    }
+
+    function updateExpenseProvided(row, prefix) {
+        const valueInput = row.querySelector(`.${prefix}-value-input`);
+        const typeSelect = row.querySelector(`.${prefix}-type-select`);
+        const hasValue = valueInput && valueInput.value.trim() !== '';
+        const hasType = typeSelect && typeSelect.value !== '';
+        row.dataset[`${prefix}Provided`] = (hasValue || hasType) ? '1' : '0';
+    }
+
+    function resolveExpense(prefix, defaultsType, defaultsValue, row) {
+        const select = row.querySelector(`.${prefix}-type-select`);
+        const input = row.querySelector(`.${prefix}-value-input`);
+        const provided = row.dataset[`${prefix}Provided`] === '1';
+        let type = defaultsType;
+        let value = defaultsValue !== null ? defaultsValue : 0;
+
+        if (provided) {
+            if (select && select.value !== '') {
+                type = select.value;
+            }
+            if (input && input.value.trim() !== '') {
+                value = parseNumber(input.value);
+            } else if (defaultsValue === null) {
+                value = 0;
+            }
+        } else if (select && select.value !== '') {
+            type = select.value;
+        }
+
+        return { provided, type, value };
+    }
+
     function getExpenseParts(row) {
-        const paymentTypeSelect = row.querySelector('.payment-type-select');
-        const paymentValueInput = row.querySelector('.payment-value-input');
-        const paymentType = paymentTypeSelect ? paymentTypeSelect.value : 'percent';
-        const paymentValue = paymentValueInput ? parseValue(paymentValueInput.value) : 0;
-        const paymentRate = paymentType === 'percent' ? paymentValue / 100 : 0;
-        const paymentFixed = paymentType === 'fixed' ? paymentValue : 0;
-
-        const logisticsTypeSelect = row.querySelector('.logistics-type-select');
-        const logisticsValueInput = row.querySelector('.logistics-value-input');
-        const logisticsType = logisticsTypeSelect ? logisticsTypeSelect.value : 'percent';
-        const logisticsValue = logisticsValueInput ? parseValue(logisticsValueInput.value) : 0;
-        const logisticsRate = logisticsType === 'percent' ? logisticsValue / 100 : 0;
-        const logisticsFixed = logisticsType === 'fixed' ? logisticsValue : 0;
-
-        const reviewsTypeSelect = row.querySelector('.reviews-type-select');
-        const reviewsValueInput = row.querySelector('.reviews-value-input');
-        const reviewsType = reviewsTypeSelect ? reviewsTypeSelect.value : 'percent';
-        const reviewsValue = reviewsValueInput ? parseValue(reviewsValueInput.value) : 0;
-        const reviewsRate = reviewsType === 'percent' ? reviewsValue / 100 : 0;
-        const reviewsFixed = reviewsType === 'fixed' ? reviewsValue : 0;
-
         return {
-            paymentType,
-            paymentValue,
-            paymentRate,
-            paymentFixed,
-            logisticsType,
-            logisticsValue,
-            logisticsRate,
-            logisticsFixed,
-            reviewsType,
-            reviewsValue,
-            reviewsRate,
-            reviewsFixed,
+            payment: resolveExpense('payment', pricingDefaults.payment_type, pricingDefaults.payment_value, row),
+            logistics: resolveExpense('logistics', pricingDefaults.logistics_type, pricingDefaults.logistics_value, row),
+            reviews: resolveExpense('reviews', pricingDefaults.reviews_type, pricingDefaults.reviews_value, row),
         };
     }
 
@@ -210,19 +403,21 @@
             return null;
         }
 
-        const salePrice = parseValue(saleInput.value);
-        const purchaseCost = parseValue(row.dataset.purchaseCost || '0');
-        const commissionPercent = parseValue(row.dataset.commissionPercent || '0');
+        const salePrice = parseNumber(saleInput.value);
+        const purchaseCost = parseNumber(row.dataset.purchaseCost || '0');
+        const commissionPercent = parseNumber(row.dataset.commissionPercent || '0');
         const commissionRate = commissionPercent / 100;
+        const taxRate = pricingDefaults.tax_percent / 100;
 
         const expenses = getExpenseParts(row);
 
         const placementCost = salePrice * commissionRate;
-        const paymentCost = expenses.paymentType === 'percent' ? salePrice * expenses.paymentRate : expenses.paymentFixed;
-        const logisticsCost = expenses.logisticsType === 'percent' ? salePrice * expenses.logisticsRate : expenses.logisticsFixed;
-        const reviewsCost = expenses.reviewsType === 'percent' ? salePrice * expenses.reviewsRate : expenses.reviewsFixed;
+        const paymentCost = expenses.payment.type === 'percent' ? salePrice * (expenses.payment.value / 100) : expenses.payment.value;
+        const logisticsCost = expenses.logistics.type === 'percent' ? salePrice * (expenses.logistics.value / 100) : expenses.logistics.value;
+        const reviewsCost = expenses.reviews.type === 'percent' ? salePrice * (expenses.reviews.value / 100) : expenses.reviews.value;
+        const taxCost = salePrice * taxRate;
 
-        const totalExpenses = purchaseCost + placementCost + paymentCost + logisticsCost + reviewsCost;
+        const totalExpenses = purchaseCost + placementCost + paymentCost + logisticsCost + reviewsCost + taxCost;
         const profitAmount = salePrice - totalExpenses;
         const profitPercent = salePrice > 0 ? (profitAmount / salePrice) * 100 : 0;
 
@@ -232,6 +427,8 @@
         const logisticsCell = row.querySelector('.logistics-cost');
         const reviewsCell = row.querySelector('.reviews-cost');
         const totalExpensesCell = row.querySelector('.total-expenses');
+        const profitInfo = row.querySelector('.profit-percent-info');
+        const purchaseCell = row.querySelector('.purchase-cost');
 
         if (profitInput) {
             profitInput.value = profitPercent.toFixed(2);
@@ -255,38 +452,50 @@
         if (totalExpensesCell) {
             totalExpensesCell.textContent = formatCurrency(totalExpenses);
         }
+        if (purchaseCell) {
+            purchaseCell.textContent = formatCurrency(purchaseCost);
+        }
+        if (profitInfo) {
+            const parts = [`Фактическая: ${profitPercent.toFixed(2)}%`];
+            if (row.dataset.profitProvided !== '1' && pricingDefaults.profit_percent !== null) {
+                parts.push(`По умолчанию ${pricingDefaults.profit_percent.toFixed(2)}%`);
+            }
+            profitInfo.textContent = parts.join(' · ');
+        }
 
         return {
             salePrice,
             profitPercent,
-            profitAmount,
-            expenses: {
-                payment_type: expenses.paymentType,
-                payment_value: expenses.paymentValue,
-                logistics_type: expenses.logisticsType,
-                logistics_value: expenses.logisticsValue,
-                reviews_type: expenses.reviewsType,
-                reviews_value: expenses.reviewsValue,
-            },
+            expenses,
         };
     }
 
     function updateSalePriceFromProfit(row) {
-        const saleInput = row.querySelector('.sale-price-input');
         const profitInput = row.querySelector('.profit-percent-input');
-        if (!saleInput || !profitInput) {
+        if (!profitInput || row.dataset.profitProvided !== '1') {
             return;
         }
 
-        const purchaseCost = parseValue(row.dataset.purchaseCost || '0');
-        const commissionPercent = parseValue(row.dataset.commissionPercent || '0');
+        const purchaseCost = parseNumber(row.dataset.purchaseCost || '0');
+        const commissionPercent = parseNumber(row.dataset.commissionPercent || '0');
         const commissionRate = commissionPercent / 100;
+        const taxRate = pricingDefaults.tax_percent / 100;
+        const targetPercent = parseNullableNumber(profitInput.value);
+        if (targetPercent === null) {
+            return;
+        }
+
         const expenses = getExpenseParts(row);
+        const paymentRate = expenses.payment.type === 'percent' ? expenses.payment.value / 100 : 0;
+        const logisticsRate = expenses.logistics.type === 'percent' ? expenses.logistics.value / 100 : 0;
+        const reviewsRate = expenses.reviews.type === 'percent' ? expenses.reviews.value / 100 : 0;
 
-        const percentExpenses = commissionRate + expenses.paymentRate + expenses.logisticsRate + expenses.reviewsRate;
-        const fixedExpenses = purchaseCost + expenses.paymentFixed + expenses.logisticsFixed + expenses.reviewsFixed;
+        const fixedExpenses = purchaseCost
+            + (expenses.payment.type === 'fixed' ? expenses.payment.value : 0)
+            + (expenses.logistics.type === 'fixed' ? expenses.logistics.value : 0)
+            + (expenses.reviews.type === 'fixed' ? expenses.reviews.value : 0);
 
-        let targetPercent = parseValue(profitInput.value);
+        const percentExpenses = commissionRate + paymentRate + logisticsRate + reviewsRate + taxRate;
         let targetRatio = targetPercent / 100;
         const maxRatio = Math.max(0, 1 - percentExpenses - 0.0001);
         if (targetRatio > maxRatio) {
@@ -306,7 +515,10 @@
             salePrice = 0;
         }
 
-        saleInput.value = salePrice.toFixed(2);
+        const saleInput = row.querySelector('.sale-price-input');
+        if (saleInput) {
+            saleInput.value = salePrice.toFixed(2);
+        }
     }
 
     function recalculateAll() {
@@ -334,43 +546,76 @@
         alertBox.textContent = '';
     }
 
-    table.querySelectorAll('.sale-price-input').forEach((input) => {
-        input.addEventListener('input', () => {
-            const row = input.closest('tr');
-            if (row) {
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach((row) => {
+        const saleInput = row.querySelector('.sale-price-input');
+        if (saleInput) {
+            saleInput.addEventListener('input', () => {
                 calculateRow(row);
+            });
+        }
+
+        const profitInput = row.querySelector('.profit-percent-input');
+        if (profitInput) {
+            profitInput.addEventListener('input', () => {
+                const hasValue = profitInput.value.trim() !== '';
+                row.dataset.profitProvided = hasValue ? '1' : '0';
+                if (hasValue) {
+                    updateSalePriceFromProfit(row);
+                }
+                calculateRow(row);
+            });
+        }
+
+        ['payment', 'logistics', 'reviews'].forEach((prefix) => {
+            const valueInput = row.querySelector(`.${prefix}-value-input`);
+            const typeSelect = row.querySelector(`.${prefix}-type-select`);
+            if (valueInput) {
+                valueInput.addEventListener('input', () => {
+                    updateExpenseProvided(row, prefix);
+                    calculateRow(row);
+                });
+            }
+            if (typeSelect) {
+                typeSelect.addEventListener('change', () => {
+                    updateExpenseProvided(row, prefix);
+                    calculateRow(row);
+                });
             }
         });
     });
 
-    table.querySelectorAll('.profit-percent-input').forEach((input) => {
-        input.addEventListener('input', () => {
-            const row = input.closest('tr');
-            if (row) {
-                updateSalePriceFromProfit(row);
-                calculateRow(row);
-            }
+    if (defaultControls.tax) {
+        defaultControls.tax.addEventListener('input', () => {
+            updateDefaultsFromInputs();
+            recalculateAll();
         });
+    }
+    if (defaultControls.profit) {
+        defaultControls.profit.addEventListener('input', () => {
+            updateDefaultsFromInputs();
+            recalculateAll();
+        });
+    }
+    ['payment', 'logistics', 'reviews'].forEach((prefix) => {
+        const valueKey = `${prefix}Value`;
+        const typeKey = `${prefix}Type`;
+        if (defaultControls[valueKey]) {
+            defaultControls[valueKey].addEventListener('input', () => {
+                updateDefaultsFromInputs();
+                recalculateAll();
+            });
+        }
+        if (defaultControls[typeKey]) {
+            defaultControls[typeKey].addEventListener('change', () => {
+                updateDefaultsFromInputs();
+                recalculateAll();
+            });
+        }
     });
 
-    table.querySelectorAll('.payment-value-input, .logistics-value-input, .reviews-value-input').forEach((input) => {
-        input.addEventListener('input', () => {
-            const row = input.closest('tr');
-            if (row) {
-                calculateRow(row);
-            }
-        });
-    });
-
-    table.querySelectorAll('.payment-type-select, .logistics-type-select, .reviews-type-select').forEach((select) => {
-        select.addEventListener('change', () => {
-            const row = select.closest('tr');
-            if (row) {
-                calculateRow(row);
-            }
-        });
-    });
-
+    updateDefaultsFromInputs();
+    recalculateAll();
     if (saveButton) {
         saveButton.addEventListener('click', async () => {
             clearAlert();
@@ -380,7 +625,7 @@
                 return;
             }
 
-            const rows = table.querySelectorAll('tbody tr');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
             if (!rows.length) {
                 showAlert('Нет данных для сохранения.', 'warning');
                 return;
@@ -393,21 +638,43 @@
                     return;
                 }
 
+                calculateRow(row);
+
                 const saleInput = row.querySelector('.sale-price-input');
                 const profitInput = row.querySelector('.profit-percent-input');
-                const rowData = calculateRow(row) || { expenses: {} };
-                const expenses = rowData.expenses || {};
+
+                const salePrice = saleInput ? parseNumber(saleInput.value) : 0;
+                const profitProvided = row.dataset.profitProvided === '1';
+                const profitValue = profitProvided && profitInput ? parseNullableNumber(profitInput.value) : null;
+
+                const paymentSelect = row.querySelector('.payment-type-select');
+                const paymentInput = row.querySelector('.payment-value-input');
+                const paymentProvided = row.dataset.paymentProvided === '1';
+                const paymentType = paymentProvided && paymentSelect ? (paymentSelect.value !== '' ? paymentSelect.value : pricingDefaults.payment_type) : null;
+                const paymentValue = paymentProvided && paymentInput ? parseNullableNumber(paymentInput.value) : null;
+
+                const logisticsSelect = row.querySelector('.logistics-type-select');
+                const logisticsInput = row.querySelector('.logistics-value-input');
+                const logisticsProvided = row.dataset.logisticsProvided === '1';
+                const logisticsType = logisticsProvided && logisticsSelect ? (logisticsSelect.value !== '' ? logisticsSelect.value : pricingDefaults.logistics_type) : null;
+                const logisticsValue = logisticsProvided && logisticsInput ? parseNullableNumber(logisticsInput.value) : null;
+
+                const reviewsSelect = row.querySelector('.reviews-type-select');
+                const reviewsInput = row.querySelector('.reviews-value-input');
+                const reviewsProvided = row.dataset.reviewsProvided === '1';
+                const reviewsType = reviewsProvided && reviewsSelect ? (reviewsSelect.value !== '' ? reviewsSelect.value : pricingDefaults.reviews_type) : null;
+                const reviewsValue = reviewsProvided && reviewsInput ? parseNullableNumber(reviewsInput.value) : null;
 
                 items.push({
                     product_id: productId,
-                    sale_price: saleInput ? parseValue(saleInput.value) : 0,
-                    profit_percent: profitInput ? parseValue(profitInput.value) : 0,
-                    payment_type: expenses.payment_type || 'percent',
-                    payment_value: expenses.payment_value !== undefined ? parseValue(expenses.payment_value) : 0,
-                    logistics_type: expenses.logistics_type || 'percent',
-                    logistics_value: expenses.logistics_value !== undefined ? parseValue(expenses.logistics_value) : 0,
-                    reviews_type: expenses.reviews_type || 'percent',
-                    reviews_value: expenses.reviews_value !== undefined ? parseValue(expenses.reviews_value) : 0,
+                    sale_price: salePrice,
+                    profit_percent: profitValue,
+                    payment_type: paymentType,
+                    payment_value: paymentValue,
+                    logistics_type: logisticsType,
+                    logistics_value: logisticsValue,
+                    reviews_type: reviewsType,
+                    reviews_value: reviewsValue,
                 });
             });
 
@@ -422,6 +689,16 @@
                     },
                     body: JSON.stringify({
                         source_id: selectedSourceId,
+                        defaults: {
+                            tax_percent: pricingDefaults.tax_percent,
+                            profit_percent: pricingDefaults.profit_percent,
+                            payment_type: pricingDefaults.payment_type,
+                            payment_value: pricingDefaults.payment_value,
+                            logistics_type: pricingDefaults.logistics_type,
+                            logistics_value: pricingDefaults.logistics_value,
+                            reviews_type: pricingDefaults.reviews_type,
+                            reviews_value: pricingDefaults.reviews_value,
+                        },
                         items,
                     }),
                 });
@@ -444,7 +721,5 @@
             }
         });
     }
-
-    recalculateAll();
 })();
 </script>

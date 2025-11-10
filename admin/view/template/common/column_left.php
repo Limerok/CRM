@@ -3,7 +3,7 @@ $route = isset($_GET['route']) ? $_GET['route'] : 'common/dashboard';
 $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
 $catalogRoutes = array('catalog/product', 'catalog/category', 'catalog/manufacturer');
-$stockRoutes = array('stock/supply', 'stock/warehouse');
+$stockRoutes = array('stock/supply', 'stock/warehouse', 'stock/recommended');
 $salesRoutes = array('stock/sale', 'sales/pricing', 'sales/commission');
 $systemRoutes = array('system/setting', 'system/source', 'system/status', 'system/currency', 'system/length', 'system/weight');
 $systemLocalizationRoutes = array('system/currency', 'system/length', 'system/weight', 'system/status');
@@ -36,6 +36,7 @@ $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/supply' && $action === 'create') ? ' active' : ''; ?>" href="<?= admin_url('stock/supply', array('action' => 'create')); ?>">Создать поставку</a></li>
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/supply' && $action === 'history') ? ' active' : ''; ?>" href="<?= admin_url('stock/supply', array('action' => 'history')); ?>">История поставок</a></li>
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/warehouse') ? ' active' : ''; ?>" href="<?= admin_url('stock/warehouse'); ?>">Склад</a></li>
+                            <li class="nav-item"><a class="nav-link<?= ($route === 'stock/recommended') ? ' active' : ''; ?>" href="<?= admin_url('stock/recommended'); ?>">Рекомендуемые остатки</a></li>
                         </ul>
                     </div>
                 </li>

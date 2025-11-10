@@ -30,33 +30,31 @@
         $defaultStatusName = isset($default_status_name) ? $default_status_name : '';
     ?>
     <form method="post" action="<?= htmlspecialchars(isset($form_action) ? $form_action : admin_url('stock/sale')); ?>" id="sale-form">
-        <div class="table-responsive mb-4">
-            <table class="table table-bordered align-middle" id="sale-items">
-                <thead>
-                    <tr>
-                        <th>Товар</th>
-                        <th style="width: 160px;">Дата заказа</th>
-                        <th style="width: 200px;">Источник</th>
-                        <th style="width: 200px;">Статус заказа</th>
-                        <th style="width: 160px;">№ задания</th>
-                        <th style="width: 160px;">№ заказа</th>
-                        <th style="width: 80px;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php if (!empty($form_items)): ?>
-                    <?php foreach ($form_items as $item): ?>
-                        <?php
-                            $statusValue = isset($item['order_status']) ? (string)$item['order_status'] : '';
-                            $statusMatched = false;
-                        ?>
-                        <tr>
-                            <td>
-                                <?= htmlspecialchars($item['product_name']); ?><?php if (!empty($item['product_model'])): ?> (<?= htmlspecialchars($item['product_model']); ?>)<?php endif; ?>
-                                <input type="hidden" name="product_ids[]" value="<?= (int)$item['product_id']; ?>">
-                            </td>
-                            <td><input type="date" class="form-control" name="order_dates[]" value="<?= htmlspecialchars($item['order_date']); ?>" required></td>
-                            <td>
+        <div id="sale-items" class="d-flex flex-column gap-3 mb-4">
+            <?php if (!empty($form_items)): ?>
+                <?php foreach ($form_items as $item): ?>
+                    <?php
+                        $statusValue = isset($item['order_status']) ? (string)$item['order_status'] : '';
+                        $statusMatched = false;
+                        $sellerPriceValue = isset($item['seller_price']) && $item['seller_price'] !== null ? number_format((float)$item['seller_price'], 2, '.', '') : '';
+                        $sourceSalePriceValue = isset($item['source_sale_price']) && $item['source_sale_price'] !== null ? number_format((float)$item['source_sale_price'], 2, '.', '') : '';
+                    ?>
+                    <div class="sale-item border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="text-muted small">Товар</div>
+                                <div class="fw-semibold"><?= htmlspecialchars($item['product_name']); ?><?php if (!empty($item['product_model'])): ?> (<?= htmlspecialchars($item['product_model']); ?>)<?php endif; ?></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button>
+                        </div>
+                        <input type="hidden" name="product_ids[]" value="<?= (int)$item['product_id']; ?>">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Дата заказа</label>
+                                <input type="date" class="form-control" name="order_dates[]" value="<?= htmlspecialchars($item['order_date']); ?>" required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Источник</label>
                                 <select name="source_ids[]" class="form-select">
                                     <option value="">Не выбрано</option>
                                     <?php if (!empty($sources)): ?>
@@ -66,8 +64,31 @@
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </select>
-                            </td>
-                            <td>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">№ задания</label>
+                                <input type="text" class="form-control" name="task_numbers[]" value="<?= htmlspecialchars(isset($item['task_number']) ? $item['task_number'] : ''); ?>" placeholder="Введите № задания">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">№ заказа</label>
+                                <input type="text" class="form-control" name="order_numbers[]" value="<?= htmlspecialchars(isset($item['order_number']) ? $item['order_number'] : ''); ?>" placeholder="Введите № заказа">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Цена продавца</label>
+                                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="<?= htmlspecialchars($sellerPriceValue); ?>" placeholder="0.00">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Источник реализовал</label>
+                                <input type="number" step="0.01" min="0" class="form-control text-end" name="source_sale_prices[]" value="<?= htmlspecialchars($sourceSalePriceValue); ?>" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Статус заказа</label>
                                 <select name="order_statuses[]" class="form-select">
                                     <option value="">Не выбрано</option>
                                     <?php if (!empty($statuses)): ?>
@@ -81,19 +102,15 @@
                                         <option value="<?= htmlspecialchars($statusValue); ?>" selected><?= htmlspecialchars($statusValue); ?></option>
                                     <?php endif; ?>
                                 </select>
-                            </td>
-                            <td><input type="text" class="form-control" name="task_numbers[]" value="<?= htmlspecialchars(isset($item['task_number']) ? $item['task_number'] : ''); ?>" placeholder="Введите № задания"></td>
-                            <td><input type="text" class="form-control" name="order_numbers[]" value="<?= htmlspecialchars(isset($item['order_number']) ? $item['order_number'] : ''); ?>" placeholder="Введите № заказа"></td>
-                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
         <div class="bg-light border rounded p-3 mb-4">
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-lg-4">
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
                     <label class="form-label">Товар</label>
                     <div class="position-relative">
                         <input type="hidden" id="sale-new-product-id">
@@ -101,11 +118,11 @@
                         <div class="list-group position-absolute w-100" id="sale-product-suggestions" style="z-index: 1000;"></div>
                     </div>
                 </div>
-                <div class="col-6 col-md-4 col-lg-2">
+                <div class="col-12 col-md-4 col-lg-2">
                     <label class="form-label">Дата заказа</label>
                     <input type="date" id="sale-new-order-date" class="form-control" value="<?= date('Y-m-d'); ?>">
                 </div>
-                <div class="col-6 col-md-4 col-lg-2">
+                <div class="col-12 col-md-4 col-lg-2">
                     <label class="form-label">Источник</label>
                     <select id="sale-new-source" class="form-select">
                         <option value="">Не выбрано</option>
@@ -116,7 +133,27 @@
                         <?php endif; ?>
                     </select>
                 </div>
-                <div class="col-6 col-md-4 col-lg-2">
+            </div>
+            <div class="row g-3 mt-0">
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">№ задания</label>
+                    <input type="text" id="sale-new-task" class="form-control" placeholder="№ задания">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">№ заказа</label>
+                    <input type="text" id="sale-new-order" class="form-control" placeholder="№ заказа">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">Цена продавца</label>
+                    <input type="number" step="0.01" min="0" id="sale-new-seller-price" class="form-control text-end" placeholder="0.00">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">Источник реализовал</label>
+                    <input type="number" step="0.01" min="0" id="sale-new-source-price" class="form-control text-end" placeholder="0.00">
+                </div>
+            </div>
+            <div class="row g-3 mt-0 align-items-end">
+                <div class="col-12 col-md-4 col-lg-3">
                     <label class="form-label">Статус заказа</label>
                     <select id="sale-new-status" class="form-select">
                         <option value="">Не выбрано</option>
@@ -127,17 +164,8 @@
                         <?php endif; ?>
                     </select>
                 </div>
-                <div class="col-6 col-md-4 col-lg-2">
-                    <label class="form-label">№ задания</label>
-                    <input type="text" id="sale-new-task" class="form-control" placeholder="№ задания">
-                </div>
-                <div class="col-6 col-md-4 col-lg-2">
-                    <label class="form-label">№ заказа</label>
-                    <input type="text" id="sale-new-order" class="form-control" placeholder="№ заказа">
-                </div>
                 <div class="col-12 col-lg-auto d-grid d-lg-flex justify-content-lg-end">
-                    <label class="form-label d-none d-lg-block">&nbsp;</label>
-                    <button type="button" class="btn btn-primary" id="sale-add-product"><i class="bi bi-plus"></i> Добавить</button>
+                    <button type="button" class="btn btn-primary mt-3 mt-lg-0" id="sale-add-product"><i class="bi bi-plus"></i> Добавить</button>
                 </div>
             </div>
         </div>
@@ -218,6 +246,9 @@ const saleNewSource = document.getElementById('sale-new-source');
 const saleNewStatus = document.getElementById('sale-new-status');
 const saleNewTask = document.getElementById('sale-new-task');
 const saleNewOrder = document.getElementById('sale-new-order');
+const saleNewSellerPrice = document.getElementById('sale-new-seller-price');
+const saleNewSourcePrice = document.getElementById('sale-new-source-price');
+const saleItemsContainer = document.getElementById('sale-items');
 let saleSelectedProduct = null;
 const saleSources = <?= json_encode($sourcesForJs, JSON_UNESCAPED_UNICODE); ?>;
 const saleStatuses = <?= json_encode($statusesForJs, JSON_UNESCAPED_UNICODE); ?>;
@@ -277,10 +308,11 @@ saleSuggestions.addEventListener('click', (event) => {
     }
 });
 
-function buildSourceOptions() {
+function buildSourceOptions(selectedValue = '') {
     const options = ['<option value="">Не выбрано</option>'];
     saleSources.forEach((source) => {
-        options.push(`<option value="${source.id}">${escapeHtml(source.name)}</option>`);
+        const isSelected = selectedValue !== '' && String(source.id) === String(selectedValue);
+        options.push(`<option value="${source.id}"${isSelected ? ' selected' : ''}>${escapeHtml(source.name)}</option>`);
     });
     return options.join('');
 }
@@ -313,61 +345,83 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
         return;
     }
 
-    const tbody = document.querySelector('#sale-items tbody');
-    const row = document.createElement('tr');
     const statusValue = saleNewStatus.value;
     const taskValue = saleNewTask.value.trim();
     const orderValue = saleNewOrder.value.trim();
     const sourceValue = saleNewSource.value;
+    const sellerPriceValue = saleNewSellerPrice.value.trim();
+    const sourcePriceValue = saleNewSourcePrice.value.trim();
 
-    row.innerHTML = `
-        <td>
-            ${escapeHtml(saleSelectedProduct.name)}${saleSelectedProduct.model ? ' (' + escapeHtml(saleSelectedProduct.model) + ')' : ''}
-            <input type="hidden" name="product_ids[]" value="${saleSelectedProduct.id}">
-        </td>
-        <td><input type="date" class="form-control" name="order_dates[]" value="${escapeHtml(orderDate)}" required></td>
-        <td>
-            <select name="source_ids[]" class="form-select">
-                ${buildSourceOptions()}
-            </select>
-        </td>
-        <td>
-            <select name="order_statuses[]" class="form-select">
-                ${buildStatusOptions(statusValue)}
-            </select>
-        </td>
-        <td><input type="text" class="form-control" name="task_numbers[]" value="${escapeHtml(taskValue)}" placeholder="Введите № задания"></td>
-        <td><input type="text" class="form-control" name="order_numbers[]" value="${escapeHtml(orderValue)}" placeholder="Введите № заказа"></td>
-        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button></td>
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sale-item border rounded p-3';
+    wrapper.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <div class="text-muted small">Товар</div>
+                <div class="fw-semibold">${escapeHtml(saleSelectedProduct.name)}${saleSelectedProduct.model ? ' (' + escapeHtml(saleSelectedProduct.model) + ')' : ''}</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger sale-remove-item"><i class="bi bi-x"></i></button>
+        </div>
+        <input type="hidden" name="product_ids[]" value="${saleSelectedProduct.id}">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Дата заказа</label>
+                <input type="date" class="form-control" name="order_dates[]" value="${escapeHtml(orderDate)}" required>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Источник</label>
+                <select name="source_ids[]" class="form-select">
+                    ${buildSourceOptions(sourceValue)}
+                </select>
+            </div>
+        </div>
+        <div class="row г-3 mt-0">
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">№ задания</label>
+                <input type="text" class="form-control" name="task_numbers[]" value="${escapeHtml(taskValue)}" placeholder="№ задания">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">№ заказа</label>
+                <input type="text" class="form-control" name="order_numbers[]" value="${escapeHtml(orderValue)}" placeholder="№ заказа">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">Цена продавца</label>
+                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="${escapeHtml(sellerPriceValue)}" placeholder="0.00">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">Источник реализовал</label>
+                <input type="number" step="0.01" min="0" class="form-control text-end" name="source_sale_prices[]" value="${escapeHtml(sourcePriceValue)}" placeholder="0.00">
+            </div>
+        </div>
+        <div class="row g-3 mt-0">
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">Статус заказа</label>
+                <select name="order_statuses[]" class="form-select">
+                    ${buildStatusOptions(statusValue || saleDefaultStatus || '')}
+                </select>
+            </div>
+        </div>
     `;
 
-    tbody.appendChild(row);
-
-    const select = row.querySelector('select[name="source_ids[]"]');
-    if (select && sourceValue) {
-        select.value = sourceValue;
-    }
+    saleItemsContainer.appendChild(wrapper);
 
     saleSearchInput.value = '';
     saleNewProductId.value = '';
     saleSuggestions.innerHTML = '';
     saleNewOrderDate.value = orderDate;
     saleNewSource.value = sourceValue;
-    if (statusValue) {
-        saleNewStatus.value = statusValue;
-    } else if (saleDefaultStatus) {
-        saleNewStatus.value = saleDefaultStatus;
-    } else {
-        saleNewStatus.value = '';
-    }
+    saleNewStatus.value = statusValue || (saleDefaultStatus || '');
     saleNewTask.value = '';
     saleNewOrder.value = '';
+    saleNewSellerPrice.value = '';
+    saleNewSourcePrice.value = '';
     saleSelectedProduct = null;
 });
 
-document.querySelector('#sale-items tbody').addEventListener('click', (event) => {
+saleItemsContainer.addEventListener('click', (event) => {
     if (event.target.closest('.sale-remove-item')) {
-        event.target.closest('tr').remove();
+        event.target.closest('.sale-item').remove();
     }
 });
 </script>
+
