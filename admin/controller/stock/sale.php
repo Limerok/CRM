@@ -114,6 +114,7 @@ class ControllerStockSale extends Controller
         $orderStatuses = $this->fetchOrderStatuses();
         $defaultStatusId = (int)get_setting('config_default_order_status_id', 0);
         $defaultStatusName = $this->findStatusNameById($orderStatuses, $defaultStatusId);
+        $allowNegativeStock = $this->isNegativeStockAllowed();
 
         $formItems = array();
         $existingCounts = array();

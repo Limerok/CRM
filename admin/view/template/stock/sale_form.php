@@ -170,10 +170,14 @@
                                     <div class="btn-group btn-group-sm">
                                         <a href="<?= admin_url('stock/sale', array('action' => 'view', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-secondary">Подробнее</a>
                                         <a href="<?= admin_url('stock/sale', array('action' => 'edit', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-primary">Редактировать</a>
-                                        <form method="post" action="<?= admin_url('stock/sale', array('action' => 'delete')); ?>" class="d-inline">
-                                            <input type="hidden" name="sale_id" value="<?= (int)$saleItem['id']; ?>">
-                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Удалить продажу #<?= (int)$saleItem['id']; ?>?');">Удалить</button>
-                                        </form>
+                                        <button type="submit"
+                                            class="btn btn-outline-danger"
+                                            formaction="<?= admin_url('stock/sale', array('action' => 'delete')); ?>"
+                                            formmethod="post"
+                                            name="sale_id"
+                                            value="<?= (int)$saleItem['id']; ?>"
+                                            formnovalidate
+                                            onclick="return confirm('Удалить продажу #<?= (int)$saleItem['id']; ?>?');">Удалить</button>
                                     </div>
                                 </td>
                             </tr>

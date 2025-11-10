@@ -8,14 +8,25 @@ class ControllerSalesPricing extends Controller
         $selectedSourceId = isset($_GET['source_id']) ? (int)$_GET['source_id'] : 0;
 
         $sources = $this->db->fetchAll('SELECT id, name FROM order_sources ORDER BY name ASC');
-        $sourceIds = array();
+        $selectedSource = null;
         foreach ($sources as $source) {
-            $sourceIds[] = (int)$source['id'];
+            $sourceId = isset($source['id']) ? (int)$source['id'] : 0;
+            if ($selectedSourceId && $selectedSourceId === $sourceId) {
+                $selectedSource = $source;
+                break;
+            }
         }
 
-        if ($selectedSourceId && !in_array($selectedSourceId, $sourceIds, true)) {
+        if ($selectedSourceId && $selectedSource === null) {
             $selectedSourceId = 0;
         }
+
+        if ($selectedSource === null && !empty($sources)) {
+            $selectedSource = $sources[0];
+            $selectedSourceId = isset($selectedSource['id']) ? (int)$selectedSource['id'] : 0;
+        }
+
+        $selectedSourceName = $selectedSource && isset($selectedSource['name']) ? $selectedSource['name'] : '';
 
         $currencies = $this->db->fetchAll('SELECT id, code, value FROM currencies');
         $currencyValuesByCode = array();
@@ -89,6 +100,7 @@ class ControllerSalesPricing extends Controller
         $this->render('sales/pricing', array(
             'sources' => $sources,
             'selected_source_id' => $selectedSourceId,
+            'selected_source_name' => $selectedSourceName,
             'products' => $products,
             'default_currency_code' => $defaultCurrencyCode,
             'expenses' => array(
