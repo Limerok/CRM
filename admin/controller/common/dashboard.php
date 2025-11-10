@@ -25,8 +25,24 @@ class ControllerCommonDashboard extends Controller
             'monthly_orders' => isset($monthlyOrders['total']) ? (int)$monthlyOrders['total'] : 0,
         );
 
+        $replenishments = $this->db->fetchAll(
+            'SELECT p.id, p.name,
+                    COALESCE(prs.recommended_quantity, 0) AS recommended_quantity,
+                    COALESCE(s.quantity, 0) AS stock_quantity,
+                    GREATEST(COALESCE(prs.recommended_quantity, 0) - COALESCE(s.quantity, 0), 0) AS to_deliver
+             FROM product_recommended_stock prs
+             LEFT JOIN products p ON prs.product_id = p.id
+             LEFT JOIN stock_items s ON s.product_id = prs.product_id
+             WHERE prs.recommended_quantity IS NOT NULL
+               AND COALESCE(prs.recommended_quantity, 0) > COALESCE(s.quantity, 0)
+               AND p.id IS NOT NULL
+             ORDER BY to_deliver DESC, p.name ASC
+             LIMIT 10'
+        );
+
         $this->render('common/dashboard', array(
             'stats' => $stats,
+            'replenishments' => $replenishments,
         ));
     }
 }
