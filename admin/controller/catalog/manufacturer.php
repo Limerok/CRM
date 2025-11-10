@@ -93,4 +93,46 @@ class ControllerCatalogManufacturer extends Controller
 
         redirect(admin_url('catalog/manufacturer'));
     }
+
+    public function inlineUpdate()
+    {
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(array('success' => false, 'error' => 'Метод не поддерживается.'));
+            return;
+        }
+
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Не указан производитель.'));
+            return;
+        }
+
+        $manufacturer = $this->db->fetch('SELECT id FROM manufacturers WHERE id = :id', array('id' => $id));
+        if (!$manufacturer) {
+            http_response_code(404);
+            echo json_encode(array('success' => false, 'error' => 'Производитель не найден.'));
+            return;
+        }
+
+        $value = isset($_POST['value']) ? (int)$_POST['value'] : 0;
+        if ($value < 0) {
+            $value = 0;
+        }
+
+        $this->db->query('UPDATE manufacturers SET sort_order = :sort_order WHERE id = :id', array(
+            'sort_order' => $value,
+            'id' => $id,
+        ));
+
+        echo json_encode(array(
+            'success' => true,
+            'value' => (string)$value,
+            'formatted_value' => (string)$value,
+        ));
+    }
 }

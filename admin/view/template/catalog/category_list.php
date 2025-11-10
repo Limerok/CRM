@@ -32,7 +32,22 @@
                         <td><?= (int)$category['id']; ?></td>
                         <td><?= htmlspecialchars($category['name']); ?></td>
                         <td><?= htmlspecialchars($category['parent_name']); ?></td>
-                        <td><?= (int)$category['sort_order']; ?></td>
+                        <td>
+                            <span
+                                class="inline-editable"
+                                data-inline-edit
+                                data-update-url="<?= admin_url('catalog/category', array('action' => 'inlineUpdate')); ?>"
+                                data-id="<?= (int)$category['id']; ?>"
+                                data-field="sort_order"
+                                data-type="number"
+                                data-step="1"
+                                data-min="0"
+                                data-value="<?= htmlspecialchars((string)(int)$category['sort_order'], ENT_QUOTES, 'UTF-8'); ?>"
+                                title="Изменить сортировку"
+                            >
+                                <?= (int)$category['sort_order']; ?>
+                            </span>
+                        </td>
                         <td class="text-end">
                             <a href="<?= admin_url('catalog/category', array('action' => 'form', 'id' => $category['id'])); ?>" class="btn btn-sm btn-outline-secondary">Изменить</a>
                             <a href="<?= admin_url('catalog/category', array('action' => 'delete', 'id' => $category['id'])); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить категорию?');">Удалить</a>

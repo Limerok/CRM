@@ -30,7 +30,22 @@
                         </td>
                         <td><?= (int)$manufacturer['id']; ?></td>
                         <td><?= htmlspecialchars($manufacturer['name']); ?></td>
-                        <td><?= (int)$manufacturer['sort_order']; ?></td>
+                        <td>
+                            <span
+                                class="inline-editable"
+                                data-inline-edit
+                                data-update-url="<?= admin_url('catalog/manufacturer', array('action' => 'inlineUpdate')); ?>"
+                                data-id="<?= (int)$manufacturer['id']; ?>"
+                                data-field="sort_order"
+                                data-type="number"
+                                data-step="1"
+                                data-min="0"
+                                data-value="<?= htmlspecialchars((string)(int)$manufacturer['sort_order'], ENT_QUOTES, 'UTF-8'); ?>"
+                                title="Изменить сортировку"
+                            >
+                                <?= (int)$manufacturer['sort_order']; ?>
+                            </span>
+                        </td>
                         <td class="text-end">
                             <a href="<?= admin_url('catalog/manufacturer', array('action' => 'form', 'id' => $manufacturer['id'])); ?>" class="btn btn-sm btn-outline-secondary">Изменить</a>
                             <a href="<?= admin_url('catalog/manufacturer', array('action' => 'delete', 'id' => $manufacturer['id'])); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить производителя?');">Удалить</a>

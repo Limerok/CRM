@@ -71,6 +71,21 @@ class ControllerCatalogProduct extends Controller
 
         $manufacturers = $this->db->fetchAll('SELECT id, name FROM manufacturers ORDER BY name ASC');
         $categories = $this->db->fetchAll('SELECT id, name FROM categories ORDER BY name ASC');
+        $currencyRows = $this->db->fetchAll('SELECT code FROM currencies ORDER BY name ASC');
+
+        $currencyCodes = array();
+        foreach ($currencyRows as $currencyRow) {
+            if (!isset($currencyRow['code'])) {
+                continue;
+            }
+            $code = strtoupper(trim($currencyRow['code']));
+            if ($code === '') {
+                continue;
+            }
+            $currencyCodes[$code] = $code;
+        }
+
+        $currencyCodes = array_values($currencyCodes);
 
         $nameSuggestions = $this->db->fetchAll('SELECT DISTINCT name FROM products ORDER BY name ASC LIMIT 20');
         $modelSuggestions = $this->db->fetchAll('SELECT DISTINCT model FROM products ORDER BY model ASC LIMIT 20');
@@ -95,6 +110,7 @@ class ControllerCatalogProduct extends Controller
             'name_suggestions' => $nameSuggestions,
             'model_suggestions' => $modelSuggestions,
             'series_suggestions' => $seriesSuggestions,
+            'currency_codes' => $currencyCodes,
             'sort' => $sort,
             'order' => $order,
             'url_filters' => $urlFilters,
@@ -255,5 +271,127 @@ class ControllerCatalogProduct extends Controller
         }
 
         redirect(admin_url('catalog/product'));
+    }
+
+    public function inlineUpdate()
+    {
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(array('success' => false, 'error' => 'Метод не поддерживается.'));
+            return;
+        }
+
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $field = isset($_POST['field']) ? $_POST['field'] : '';
+        $value = isset($_POST['value']) ? $_POST['value'] : null;
+
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Не указан товар.'));
+            return;
+        }
+
+        $product = $this->db->fetch('SELECT id FROM products WHERE id = :id', array('id' => $id));
+        if (!$product) {
+            http_response_code(404);
+            echo json_encode(array('success' => false, 'error' => 'Товар не найден.'));
+            return;
+        }
+
+        if (!in_array($field, array('purchase_price', 'purchase_currency', 'sort_order'), true)) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => 'Поле недоступно для изменения.'));
+            return;
+        }
+
+        try {
+            if ($field === 'purchase_price') {
+                $raw = str_replace(' ', '', (string)$value);
+                $normalized = str_replace(',', '.', $raw);
+                $price = ($normalized === '') ? 0.0 : (float)$normalized;
+                if ($price < 0) {
+                    $price = 0.0;
+                }
+
+                $this->db->query('UPDATE products SET purchase_price = :purchase_price WHERE id = :id', array(
+                    'purchase_price' => $price,
+                    'id' => $id,
+                ));
+
+                $valueString = rtrim(rtrim(number_format($price, 6, '.', ''), '0'), '.');
+                if ($valueString === '') {
+                    $valueString = '0';
+                }
+
+                echo json_encode(array(
+                    'success' => true,
+                    'value' => $valueString,
+                    'formatted_value' => number_format($price, 2, '.', ' '),
+                ));
+                return;
+            }
+
+            if ($field === 'purchase_currency') {
+                $currencyCode = strtoupper(trim((string)$value));
+                if ($currencyCode === '') {
+                    throw new RuntimeException('Укажите валюту.');
+                }
+
+                $rows = $this->db->fetchAll('SELECT code FROM currencies');
+                $available = array();
+                foreach ($rows as $row) {
+                    if (!isset($row['code'])) {
+                        continue;
+                    }
+                    $available[strtoupper(trim($row['code']))] = true;
+                }
+
+                if (!$available || !isset($available[$currencyCode])) {
+                    throw new RuntimeException('Неизвестная валюта.');
+                }
+
+                $this->db->query('UPDATE products SET purchase_currency = :purchase_currency WHERE id = :id', array(
+                    'purchase_currency' => $currencyCode,
+                    'id' => $id,
+                ));
+
+                echo json_encode(array(
+                    'success' => true,
+                    'value' => $currencyCode,
+                    'formatted_value' => $currencyCode,
+                ));
+                return;
+            }
+
+            if ($field === 'sort_order') {
+                $sortOrder = (int)$value;
+                if ($sortOrder < 0) {
+                    $sortOrder = 0;
+                }
+
+                $this->db->query('UPDATE products SET sort_order = :sort_order WHERE id = :id', array(
+                    'sort_order' => $sortOrder,
+                    'id' => $id,
+                ));
+
+                echo json_encode(array(
+                    'success' => true,
+                    'value' => (string)$sortOrder,
+                    'formatted_value' => (string)$sortOrder,
+                ));
+                return;
+            }
+        } catch (RuntimeException $exception) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'error' => $exception->getMessage()));
+            return;
+        } catch (Exception $exception) {
+            http_response_code(500);
+            echo json_encode(array('success' => false, 'error' => 'Не удалось сохранить изменение.'));
+            return;
+        }
     }
 }

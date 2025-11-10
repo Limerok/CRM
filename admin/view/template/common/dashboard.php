@@ -33,8 +33,8 @@
             <h5 class="card-title mb-0">Пополнение остатков</h5>
         </div>
         <?php if (!empty($replenishments)): ?>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+            <div class="table-responsive dashboard-replenishment-wrapper">
+                <table class="table table-sm align-middle mb-0 dashboard-replenishment-table">
                     <thead>
                         <tr>
                             <th>Наименование</th>

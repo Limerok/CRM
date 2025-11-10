@@ -21,20 +21,20 @@ class ControllerStockWarehouse extends Controller
             'series' => 'p.series',
             'manufacturer' => 'm.name',
             'category' => 'c.name',
-            'quantity' => 's.quantity',
+            'quantity' => 'quantity',
         );
 
         if (!isset($sortMap[$sort])) {
             $sort = 'name';
         }
 
-        $sql = 'SELECT s.product_id, s.quantity, p.name, p.model, p.series, m.name AS manufacturer_name, c.name AS category_name,
-                       prs.recommended_quantity
-            FROM stock_items s
-            LEFT JOIN products p ON s.product_id = p.id
+        $sql = 'SELECT p.id AS product_id, COALESCE(s.quantity, 0) AS quantity, p.name, p.model, p.series,
+                       m.name AS manufacturer_name, c.name AS category_name, prs.recommended_quantity
+            FROM products p
+            LEFT JOIN stock_items s ON s.product_id = p.id
             LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
             LEFT JOIN categories c ON p.category_id = c.id
-            LEFT JOIN product_recommended_stock prs ON prs.product_id = s.product_id';
+            LEFT JOIN product_recommended_stock prs ON prs.product_id = p.id';
 
         $conditions = array();
         $params = array();
@@ -64,8 +64,13 @@ class ControllerStockWarehouse extends Controller
             $params['filter_category_id'] = $filters['filter_category_id'];
         }
 
+        $visibilityConditions = array('prs.recommended_quantity IS NOT NULL', 's.product_id IS NOT NULL');
+
         if ($conditions) {
             $sql .= ' WHERE ' . implode(' AND ', $conditions);
+            $sql .= ' AND (' . implode(' OR ', $visibilityConditions) . ')';
+        } else {
+            $sql .= ' WHERE (' . implode(' OR ', $visibilityConditions) . ')';
         }
 
         $sql .= ' ORDER BY ' . $sortMap[$sort] . ' ' . $order . ', p.name ASC';
