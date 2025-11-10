@@ -13,13 +13,6 @@ $stockActive = in_array($route, $stockRoutes, true);
 $salesActive = in_array($route, $salesRoutes, true);
 $systemActive = in_array($route, $systemRoutes, true);
 $systemLocalizationActive = in_array($route, $systemLocalizationRoutes, true);
-
-global $db;
-$pricingSources = array();
-if (isset($db)) {
-    $pricingSources = $db->fetchAll('SELECT id, name FROM order_sources ORDER BY name ASC');
-}
-$activePricingSourceId = isset($_GET['source_id']) ? (int)$_GET['source_id'] : 0;
 ?>
         <aside class="col-md-3 col-lg-2 bg-light sidebar py-4">
             <ul class="nav flex-column">
@@ -51,15 +44,7 @@ $activePricingSourceId = isset($_GET['source_id']) ? (int)$_GET['source_id'] : 0
                     <div class="collapse<?= $salesActive ? ' show' : ''; ?>" id="salesMenu">
                         <ul class="nav flex-column ms-3">
                             <li class="nav-item"><a class="nav-link<?= ($route === 'stock/sale') ? ' active' : ''; ?>" href="<?= admin_url('stock/sale'); ?>">Продажа</a></li>
-                            <?php if (!empty($pricingSources)): ?>
-                                <?php foreach ($pricingSources as $pricingSource): ?>
-                                    <?php $sourceId = (int)$pricingSource['id']; ?>
-                                    <?php $sourceActive = ($route === 'sales/pricing' && $activePricingSourceId === $sourceId); ?>
-                                    <li class="nav-item"><a class="nav-link<?= $sourceActive ? ' active' : ''; ?>" href="<?= admin_url('sales/pricing', array('source_id' => $sourceId)); ?>">Расчет цен <?= htmlspecialchars($pricingSource['name']); ?></a></li>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <li class="nav-item"><span class="nav-link disabled">Расчет цен</span></li>
-                            <?php endif; ?>
+                            <li class="nav-item"><a class="nav-link<?= ($route === 'sales/pricing') ? ' active' : ''; ?>" href="<?= admin_url('sales/pricing'); ?>">Расчет цен</a></li>
                             <li class="nav-item"><a class="nav-link<?= ($route === 'sales/commission') ? ' active' : ''; ?>" href="<?= admin_url('sales/commission'); ?>">Комиссия по категориям</a></li>
                         </ul>
                     </div>

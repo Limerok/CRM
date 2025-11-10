@@ -24,6 +24,7 @@ class Migrator
         $this->createOrderStatuses();
         $this->createSales();
         $this->createCategorySourceCommissions();
+        $this->createProductPricing();
     }
 
     private function createUsers()
@@ -338,5 +339,67 @@ class Migrator
             CONSTRAINT fk_category_source_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
             CONSTRAINT fk_category_source_source FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    private function createProductPricing()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS product_pricing (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            source_id INT NOT NULL,
+            sale_price DECIMAL(15,4) NOT NULL DEFAULT 0,
+            profit_percent DECIMAL(9,4) NOT NULL DEFAULT 0,
+            payment_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            payment_value DECIMAL(15,4) NOT NULL DEFAULT 0,
+            logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            logistics_value DECIMAL(15,4) NOT NULL DEFAULT 0,
+            reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            reviews_value DECIMAL(15,4) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_product_source (product_id, source_id),
+            CONSTRAINT fk_product_pricing_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            CONSTRAINT fk_product_pricing_source FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $profitPercentColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'profit_percent'");
+        if (!$profitPercentColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN profit_percent DECIMAL(9,4) NOT NULL DEFAULT 0 AFTER sale_price");
+        }
+
+        $paymentTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'payment_type'");
+        if (!$paymentTypeColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER sale_price");
+        }
+
+        $paymentValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'payment_value'");
+        if (!$paymentValueColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN payment_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER payment_type");
+        }
+
+        $logisticsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'logistics_type'");
+        if (!$logisticsTypeColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER payment_value");
+        }
+
+        $logisticsValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'logistics_value'");
+        if (!$logisticsValueColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN logistics_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER logistics_type");
+        }
+
+        $reviewsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'reviews_type'");
+        if (!$reviewsTypeColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent' AFTER logistics_value");
+        }
+
+        $reviewsValueColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing LIKE 'reviews_value'");
+        if (!$reviewsValueColumn) {
+            $this->db->query("ALTER TABLE product_pricing ADD COLUMN reviews_value DECIMAL(15,4) NOT NULL DEFAULT 0 AFTER reviews_type");
+        }
+
+        $uniqueIndex = $this->db->fetch("SHOW INDEX FROM product_pricing WHERE Key_name = 'uq_product_source'");
+        if (!$uniqueIndex) {
+            $this->db->query('ALTER TABLE product_pricing ADD UNIQUE KEY uq_product_source (product_id, source_id)');
+        }
     }
 }
