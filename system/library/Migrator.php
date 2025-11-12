@@ -270,8 +270,14 @@ class Migrator
         $this->db->query("CREATE TABLE IF NOT EXISTS sales (
             id INT AUTO_INCREMENT PRIMARY KEY,
             sale_date DATE NOT NULL,
+            is_multi_sale TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $multiSaleColumn = $this->db->fetch("SHOW COLUMNS FROM sales LIKE 'is_multi_sale'");
+        if (!$multiSaleColumn) {
+            $this->db->query("ALTER TABLE sales ADD COLUMN is_multi_sale TINYINT(1) NOT NULL DEFAULT 0 AFTER sale_date");
+        }
 
         $this->db->query("CREATE TABLE IF NOT EXISTS sale_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -330,13 +336,23 @@ class Migrator
         }
 
         $taskNumberIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'task_number_unique'");
-        if (!$taskNumberIndex) {
-            $this->db->query('ALTER TABLE sale_items ADD UNIQUE KEY task_number_unique (task_number)');
+        if ($taskNumberIndex) {
+            $this->db->query('ALTER TABLE sale_items DROP INDEX task_number_unique');
         }
 
         $orderNumberIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'order_number_unique'");
-        if (!$orderNumberIndex) {
-            $this->db->query('ALTER TABLE sale_items ADD UNIQUE KEY order_number_unique (order_number)');
+        if ($orderNumberIndex) {
+            $this->db->query('ALTER TABLE sale_items DROP INDEX order_number_unique');
+        }
+
+        $taskNumberIdx = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'idx_task_number'");
+        if (!$taskNumberIdx) {
+            $this->db->query('ALTER TABLE sale_items ADD INDEX idx_task_number (task_number)');
+        }
+
+        $orderNumberIdx = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'idx_order_number'");
+        if (!$orderNumberIdx) {
+            $this->db->query('ALTER TABLE sale_items ADD INDEX idx_order_number (order_number)');
         }
 
         $sourceIndex = $this->db->fetch("SHOW INDEX FROM sale_items WHERE Key_name = 'source_id'");
@@ -348,6 +364,8 @@ class Migrator
         if (!$existingSourceFk && $sourceColumn) {
             $this->db->query('ALTER TABLE sale_items ADD CONSTRAINT sale_items_source_fk FOREIGN KEY (source_id) REFERENCES order_sources(id) ON DELETE SET NULL');
         }
+
+        $this->splitSingleItemSales();
     }
 
     private function createCategorySourceCommissions()
@@ -448,11 +466,11 @@ class Migrator
             source_id INT NOT NULL UNIQUE,
             tax_percent DECIMAL(9,4) NOT NULL DEFAULT 0,
             profit_percent DECIMAL(9,4) DEFAULT NULL,
-            payment_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            payment_type VARCHAR(16) DEFAULT NULL,
             payment_value DECIMAL(15,4) DEFAULT NULL,
-            logistics_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            logistics_type VARCHAR(16) DEFAULT NULL,
             logistics_value DECIMAL(15,4) DEFAULT NULL,
-            reviews_type VARCHAR(16) NOT NULL DEFAULT 'percent',
+            reviews_type VARCHAR(16) DEFAULT NULL,
             reviews_value DECIMAL(15,4) DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -462,6 +480,80 @@ class Migrator
         $taxPercentColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'tax_percent'");
         if (!$taxPercentColumn) {
             $this->db->query("ALTER TABLE product_pricing_defaults ADD COLUMN tax_percent DECIMAL(9,4) NOT NULL DEFAULT 0 AFTER source_id");
+        }
+
+        $profitPercentColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'profit_percent'");
+        if ($profitPercentColumn && isset($profitPercentColumn['Null']) && strtoupper($profitPercentColumn['Null']) === 'NO') {
+            $this->db->query('ALTER TABLE product_pricing_defaults MODIFY profit_percent DECIMAL(9,4) DEFAULT NULL');
+        }
+
+        $paymentTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'payment_type'");
+        if ($paymentTypeColumn && isset($paymentTypeColumn['Null']) && strtoupper($paymentTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing_defaults MODIFY payment_type VARCHAR(16) DEFAULT NULL");
+        }
+
+        $logisticsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'logistics_type'");
+        if ($logisticsTypeColumn && isset($logisticsTypeColumn['Null']) && strtoupper($logisticsTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing_defaults MODIFY logistics_type VARCHAR(16) DEFAULT NULL");
+        }
+
+        $reviewsTypeColumn = $this->db->fetch("SHOW COLUMNS FROM product_pricing_defaults LIKE 'reviews_type'");
+        if ($reviewsTypeColumn && isset($reviewsTypeColumn['Null']) && strtoupper($reviewsTypeColumn['Null']) === 'NO') {
+            $this->db->query("ALTER TABLE product_pricing_defaults MODIFY reviews_type VARCHAR(16) DEFAULT NULL");
+        }
+
+        $this->db->query('UPDATE product_pricing_defaults SET profit_percent = NULL, payment_type = NULL, payment_value = NULL, logistics_type = NULL, logistics_value = NULL, reviews_type = NULL, reviews_value = NULL WHERE profit_percent IS NOT NULL OR payment_type IS NOT NULL OR payment_value IS NOT NULL OR logistics_type IS NOT NULL OR logistics_value IS NOT NULL OR reviews_type IS NOT NULL OR reviews_value IS NOT NULL');
+    }
+
+    private function splitSingleItemSales()
+    {
+        $salesToSplit = $this->db->fetchAll('SELECT sale_id, COUNT(*) AS items_count FROM sale_items GROUP BY sale_id HAVING items_count > 1');
+        if (!$salesToSplit) {
+            return;
+        }
+
+        foreach ($salesToSplit as $row) {
+            $saleId = isset($row['sale_id']) ? (int)$row['sale_id'] : 0;
+            if ($saleId <= 0) {
+                continue;
+            }
+
+            $sale = $this->db->fetch('SELECT id, sale_date, created_at, is_multi_sale FROM sales WHERE id = :id', array('id' => $saleId));
+            if (!$sale || (int)$sale['is_multi_sale'] === 1) {
+                continue;
+            }
+
+            $items = $this->db->fetchAll('SELECT id FROM sale_items WHERE sale_id = :sale_id ORDER BY id ASC', array('sale_id' => $saleId));
+            if (!$items) {
+                continue;
+            }
+
+            $keepFirst = true;
+            foreach ($items as $item) {
+                $itemId = isset($item['id']) ? (int)$item['id'] : 0;
+                if ($itemId <= 0) {
+                    continue;
+                }
+
+                if ($keepFirst) {
+                    $keepFirst = false;
+                    continue;
+                }
+
+                $this->db->query('INSERT INTO sales (sale_date, is_multi_sale, created_at) VALUES (:sale_date, 0, :created_at)', array(
+                    'sale_date' => $sale['sale_date'],
+                    'created_at' => $sale['created_at'],
+                ));
+                $newSaleId = (int)$this->db->lastInsertId();
+                if ($newSaleId <= 0) {
+                    continue;
+                }
+
+                $this->db->query('UPDATE sale_items SET sale_id = :new_sale_id WHERE id = :item_id', array(
+                    'new_sale_id' => $newSaleId,
+                    'item_id' => $itemId,
+                ));
+            }
         }
     }
 }

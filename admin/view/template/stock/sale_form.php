@@ -28,8 +28,15 @@
     <?php
         $statuses = isset($statuses) && is_array($statuses) ? $statuses : array();
         $defaultStatusName = isset($default_status_name) ? $default_status_name : '';
+        $isMultiSale = !empty($is_multi_sale);
+        $selectedSaleDate = isset($selected_sale_date) && $selected_sale_date !== '' ? $selected_sale_date : date('Y-m-d');
     ?>
     <form method="post" action="<?= htmlspecialchars(isset($form_action) ? $form_action : admin_url('stock/sale')); ?>" id="sale-form">
+        <input type="hidden" name="is_multi_sale" value="0">
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="sale-multi-sale" name="is_multi_sale" value="1"<?= $isMultiSale ? ' checked' : ''; ?>>
+            <label class="form-check-label" for="sale-multi-sale">Мульти продажа</label>
+        </div>
         <div id="sale-items" class="d-flex flex-column gap-3 mb-4">
             <?php if (!empty($form_items)): ?>
                 <?php foreach ($form_items as $item): ?>
@@ -38,6 +45,7 @@
                         $statusMatched = false;
                         $sellerPriceValue = isset($item['seller_price']) && $item['seller_price'] !== null ? number_format((float)$item['seller_price'], 2, '.', '') : '';
                         $sourceSalePriceValue = isset($item['source_sale_price']) && $item['source_sale_price'] !== null ? number_format((float)$item['source_sale_price'], 2, '.', '') : '';
+                        $saleDateValue = isset($item['sale_date']) && $item['sale_date'] !== '' ? $item['sale_date'] : $selectedSaleDate;
                     ?>
                     <div class="sale-item border rounded p-3">
                         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -52,6 +60,10 @@
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Дата заказа</label>
                                 <input type="date" class="form-control" name="order_dates[]" value="<?= htmlspecialchars($item['order_date']); ?>" required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Дата продажи</label>
+                                <input type="date" class="form-control" name="sale_dates[]" value="<?= htmlspecialchars($saleDateValue); ?>" required>
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Источник</label>
@@ -78,12 +90,12 @@
                         </div>
                         <div class="row g-3 mt-0">
                             <div class="col-12 col-md-4">
-                                <label class="form-label">Цена продавца</label>
-                                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="<?= htmlspecialchars($sellerPriceValue); ?>" placeholder="0.00">
-                            </div>
-                            <div class="col-12 col-md-4">
                                 <label class="form-label">Источник реализовал</label>
                                 <input type="number" step="0.01" min="0" class="form-control text-end" name="source_sale_prices[]" value="<?= htmlspecialchars($sourceSalePriceValue); ?>" placeholder="0.00">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Цена продавца</label>
+                                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="<?= htmlspecialchars($sellerPriceValue); ?>" placeholder="0.00">
                             </div>
                         </div>
                         <div class="row g-3 mt-0">
@@ -123,6 +135,10 @@
                     <input type="date" id="sale-new-order-date" class="form-control" value="<?= date('Y-m-d'); ?>">
                 </div>
                 <div class="col-12 col-md-4 col-lg-2">
+                    <label class="form-label">Дата продажи</label>
+                    <input type="date" id="sale-new-sale-date" class="form-control" value="<?= htmlspecialchars($selectedSaleDate); ?>">
+                </div>
+                <div class="col-12 col-md-4 col-lg-2">
                     <label class="form-label">Источник</label>
                     <select id="sale-new-source" class="form-select">
                         <option value="">Не выбрано</option>
@@ -143,13 +159,15 @@
                     <label class="form-label">№ заказа</label>
                     <input type="text" id="sale-new-order" class="form-control" placeholder="№ заказа">
                 </div>
-                <div class="col-12 col-md-4 col-lg-3">
-                    <label class="form-label">Цена продавца</label>
-                    <input type="number" step="0.01" min="0" id="sale-new-seller-price" class="form-control text-end" placeholder="0.00">
-                </div>
+            </div>
+            <div class="row g-3 mt-0">
                 <div class="col-12 col-md-4 col-lg-3">
                     <label class="form-label">Источник реализовал</label>
                     <input type="number" step="0.01" min="0" id="sale-new-source-price" class="form-control text-end" placeholder="0.00">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">Цена продавца</label>
+                    <input type="number" step="0.01" min="0" id="sale-new-seller-price" class="form-control text-end" placeholder="0.00">
                 </div>
             </div>
             <div class="row g-3 mt-0 align-items-end">
@@ -242,6 +260,7 @@ const saleSearchInput = document.getElementById('sale-product-search');
 const saleSuggestions = document.getElementById('sale-product-suggestions');
 const saleNewProductId = document.getElementById('sale-new-product-id');
 const saleNewOrderDate = document.getElementById('sale-new-order-date');
+const saleNewSaleDate = document.getElementById('sale-new-sale-date');
 const saleNewSource = document.getElementById('sale-new-source');
 const saleNewStatus = document.getElementById('sale-new-status');
 const saleNewTask = document.getElementById('sale-new-task');
@@ -249,6 +268,7 @@ const saleNewOrder = document.getElementById('sale-new-order');
 const saleNewSellerPrice = document.getElementById('sale-new-seller-price');
 const saleNewSourcePrice = document.getElementById('sale-new-source-price');
 const saleItemsContainer = document.getElementById('sale-items');
+const saleMultiSale = document.getElementById('sale-multi-sale');
 let saleSelectedProduct = null;
 const saleSources = <?= json_encode($sourcesForJs, JSON_UNESCAPED_UNICODE); ?>;
 const saleStatuses = <?= json_encode($statusesForJs, JSON_UNESCAPED_UNICODE); ?>;
@@ -339,9 +359,23 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
         return;
     }
 
+    if (saleMultiSale && !saleMultiSale.checked) {
+        const existingItems = saleItemsContainer.querySelectorAll('.sale-item').length;
+        if (existingItems >= 1) {
+            alert('Для одиночной продажи можно добавить только один товар.');
+            return;
+        }
+    }
+
     const orderDate = saleNewOrderDate.value;
     if (!orderDate) {
         alert('Укажите дату заказа.');
+        return;
+    }
+
+    const saleDate = saleNewSaleDate ? saleNewSaleDate.value : '';
+    if (!saleDate) {
+        alert('Укажите дату продажи.');
         return;
     }
 
@@ -369,13 +403,17 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
                 <input type="date" class="form-control" name="order_dates[]" value="${escapeHtml(orderDate)}" required>
             </div>
             <div class="col-12 col-md-4">
+                <label class="form-label">Дата продажи</label>
+                <input type="date" class="form-control" name="sale_dates[]" value="${escapeHtml(saleDate)}" required>
+            </div>
+            <div class="col-12 col-md-4">
                 <label class="form-label">Источник</label>
                 <select name="source_ids[]" class="form-select">
                     ${buildSourceOptions(sourceValue)}
                 </select>
             </div>
         </div>
-        <div class="row г-3 mt-0">
+        <div class="row g-3 mt-0">
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label">№ задания</label>
                 <input type="text" class="form-control" name="task_numbers[]" value="${escapeHtml(taskValue)}" placeholder="№ задания">
@@ -384,13 +422,15 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
                 <label class="form-label">№ заказа</label>
                 <input type="text" class="form-control" name="order_numbers[]" value="${escapeHtml(orderValue)}" placeholder="№ заказа">
             </div>
-            <div class="col-12 col-md-4 col-lg-3">
-                <label class="form-label">Цена продавца</label>
-                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="${escapeHtml(sellerPriceValue)}" placeholder="0.00">
-            </div>
+        </div>
+        <div class="row g-3 mt-0">
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label">Источник реализовал</label>
                 <input type="number" step="0.01" min="0" class="form-control text-end" name="source_sale_prices[]" value="${escapeHtml(sourcePriceValue)}" placeholder="0.00">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">Цена продавца</label>
+                <input type="number" step="0.01" min="0" class="form-control text-end" name="seller_prices[]" value="${escapeHtml(sellerPriceValue)}" placeholder="0.00">
             </div>
         </div>
         <div class="row g-3 mt-0">
@@ -409,6 +449,9 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
     saleNewProductId.value = '';
     saleSuggestions.innerHTML = '';
     saleNewOrderDate.value = orderDate;
+    if (saleNewSaleDate) {
+        saleNewSaleDate.value = saleDate;
+    }
     saleNewSource.value = sourceValue;
     saleNewStatus.value = statusValue || (saleDefaultStatus || '');
     saleNewTask.value = '';
@@ -423,5 +466,16 @@ saleItemsContainer.addEventListener('click', (event) => {
         event.target.closest('.sale-item').remove();
     }
 });
+
+if (saleMultiSale) {
+    saleMultiSale.addEventListener('change', () => {
+        if (!saleMultiSale.checked) {
+            const itemsCount = saleItemsContainer.querySelectorAll('.sale-item').length;
+            if (itemsCount > 1) {
+                alert('Для одиночной продажи оставьте только один товар.');
+            }
+        }
+    });
+}
 </script>
 

@@ -42,42 +42,21 @@ class ControllerSalesPricing extends Controller
         if ($sourceId <= 0) {
             return array(
                 'tax_percent' => 0.0,
-                'profit_percent' => null,
-                'payment_type' => 'percent',
-                'payment_value' => null,
-                'logistics_type' => 'percent',
-                'logistics_value' => null,
-                'reviews_type' => 'percent',
-                'reviews_value' => null,
             );
         }
 
-        $row = $this->db->fetch('SELECT tax_percent, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value FROM product_pricing_defaults WHERE source_id = :source_id', array(
+        $row = $this->db->fetch('SELECT tax_percent FROM product_pricing_defaults WHERE source_id = :source_id', array(
             'source_id' => $sourceId,
         ));
 
         if (!$row) {
             return array(
                 'tax_percent' => 0.0,
-                'profit_percent' => null,
-                'payment_type' => 'percent',
-                'payment_value' => null,
-                'logistics_type' => 'percent',
-                'logistics_value' => null,
-                'reviews_type' => 'percent',
-                'reviews_value' => null,
             );
         }
 
         return array(
             'tax_percent' => isset($row['tax_percent']) ? (float)$row['tax_percent'] : 0.0,
-            'profit_percent' => isset($row['profit_percent']) && $row['profit_percent'] !== null ? (float)$row['profit_percent'] : null,
-            'payment_type' => in_array(isset($row['payment_type']) ? $row['payment_type'] : '', array('percent', 'fixed'), true) ? $row['payment_type'] : 'percent',
-            'payment_value' => isset($row['payment_value']) && $row['payment_value'] !== null ? (float)$row['payment_value'] : null,
-            'logistics_type' => in_array(isset($row['logistics_type']) ? $row['logistics_type'] : '', array('percent', 'fixed'), true) ? $row['logistics_type'] : 'percent',
-            'logistics_value' => isset($row['logistics_value']) && $row['logistics_value'] !== null ? (float)$row['logistics_value'] : null,
-            'reviews_type' => in_array(isset($row['reviews_type']) ? $row['reviews_type'] : '', array('percent', 'fixed'), true) ? $row['reviews_type'] : 'percent',
-            'reviews_value' => isset($row['reviews_value']) && $row['reviews_value'] !== null ? (float)$row['reviews_value'] : null,
         );
     }
 
@@ -90,31 +69,6 @@ class ControllerSalesPricing extends Controller
             $taxPercent = 0.0;
         }
         $normalized['tax_percent'] = $taxPercent;
-
-        $profitPercent = null;
-        if (isset($defaults['profit_percent']) && $defaults['profit_percent'] !== '' && $defaults['profit_percent'] !== null) {
-            $profitPercent = (float)$defaults['profit_percent'];
-            if ($profitPercent < 0) {
-                $profitPercent = 0.0;
-            }
-        }
-        $normalized['profit_percent'] = $profitPercent;
-
-        $normalized['payment_type'] = in_array(isset($defaults['payment_type']) ? $defaults['payment_type'] : '', array('percent', 'fixed'), true) ? $defaults['payment_type'] : 'percent';
-        $normalized['logistics_type'] = in_array(isset($defaults['logistics_type']) ? $defaults['logistics_type'] : '', array('percent', 'fixed'), true) ? $defaults['logistics_type'] : 'percent';
-        $normalized['reviews_type'] = in_array(isset($defaults['reviews_type']) ? $defaults['reviews_type'] : '', array('percent', 'fixed'), true) ? $defaults['reviews_type'] : 'percent';
-
-        foreach (array('payment_value', 'logistics_value', 'reviews_value') as $key) {
-            $value = null;
-            if (isset($defaults[$key]) && $defaults[$key] !== '' && $defaults[$key] !== null) {
-                $floatValue = (float)$defaults[$key];
-                if ($floatValue < 0) {
-                    $floatValue = 0.0;
-                }
-                $value = $floatValue;
-            }
-            $normalized[$key] = $value;
-        }
 
         return $normalized;
     }
@@ -132,13 +86,6 @@ class ControllerSalesPricing extends Controller
         $params = array(
             'source_id' => $sourceId,
             'tax_percent' => $defaults['tax_percent'],
-            'profit_percent' => $defaults['profit_percent'],
-            'payment_type' => $defaults['payment_type'],
-            'payment_value' => $defaults['payment_value'],
-            'logistics_type' => $defaults['logistics_type'],
-            'logistics_value' => $defaults['logistics_value'],
-            'reviews_type' => $defaults['reviews_type'],
-            'reviews_value' => $defaults['reviews_value'],
         );
 
         if ($existing) {
@@ -146,9 +93,9 @@ class ControllerSalesPricing extends Controller
             $paramsForUpdate['id'] = (int)$existing['id'];
             unset($paramsForUpdate['source_id']);
 
-            $this->db->query('UPDATE product_pricing_defaults SET tax_percent = :tax_percent, profit_percent = :profit_percent, payment_type = :payment_type, payment_value = :payment_value, logistics_type = :logistics_type, logistics_value = :logistics_value, reviews_type = :reviews_type, reviews_value = :reviews_value WHERE id = :id', $paramsForUpdate);
+            $this->db->query('UPDATE product_pricing_defaults SET tax_percent = :tax_percent, profit_percent = NULL, payment_type = NULL, payment_value = NULL, logistics_type = NULL, logistics_value = NULL, reviews_type = NULL, reviews_value = NULL WHERE id = :id', $paramsForUpdate);
         } else {
-            $this->db->query('INSERT INTO product_pricing_defaults (source_id, tax_percent, profit_percent, payment_type, payment_value, logistics_type, logistics_value, reviews_type, reviews_value) VALUES (:source_id, :tax_percent, :profit_percent, :payment_type, :payment_value, :logistics_type, :logistics_value, :reviews_type, :reviews_value)', $params);
+            $this->db->query('INSERT INTO product_pricing_defaults (source_id, tax_percent) VALUES (:source_id, :tax_percent)', $params);
         }
     }
 
