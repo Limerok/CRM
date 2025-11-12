@@ -8,9 +8,13 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3">
+            <?php
+                $saleDateValue = isset($sale['sale_date']) ? (string)$sale['sale_date'] : '';
+                $saleDateDisplay = ($saleDateValue !== '' && $saleDateValue !== '0000-00-00') ? $saleDateValue : '—';
+            ?>
             <div class="col-md-4">
                 <div class="fw-semibold text-muted">Дата продажи</div>
-                <div><?= htmlspecialchars($sale['sale_date']); ?></div>
+                <div><?= htmlspecialchars($saleDateDisplay); ?></div>
             </div>
             <div class="col-md-4">
                 <div class="fw-semibold text-muted">Дата создания</div>

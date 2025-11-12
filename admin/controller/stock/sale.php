@@ -56,7 +56,7 @@ class ControllerStockSale extends Controller
             if (!$errors) {
                 $saleDate = !empty($saleDates) ? $saleDates[0] : null;
                 $this->db->query('INSERT INTO sales (sale_date, is_multi_sale) VALUES (:sale_date, :is_multi_sale)', array(
-                    'sale_date' => $saleDate,
+                    'sale_date' => $this->normalizeSaleDateForStorage($saleDate),
                     'is_multi_sale' => $isMultiSale ? 1 : 0,
                 ));
                 $saleId = (int)$this->db->lastInsertId();
@@ -86,6 +86,8 @@ class ControllerStockSale extends Controller
             }
         }
 
+        $noSaleDateValue = $this->getNoSaleDateValue();
+
         $recentSales = $this->db->fetchAll('SELECT
                 s.id AS sale_id,
                 si.id AS item_id,
@@ -100,8 +102,10 @@ class ControllerStockSale extends Controller
             INNER JOIN sales s ON si.sale_id = s.id
             LEFT JOIN products p ON si.product_id = p.id
             LEFT JOIN order_sources os ON si.source_id = os.id
-            ORDER BY (s.sale_date IS NULL), s.sale_date DESC, s.created_at DESC, si.id DESC
-            LIMIT 10');
+            ORDER BY (s.sale_date = :no_sale_date), s.sale_date DESC, s.created_at DESC, si.id DESC
+            LIMIT 10', array(
+                'no_sale_date' => $noSaleDateValue,
+            ));
 
         $this->render('stock/sale_form', array(
             'error' => $errors ? implode(' ', $errors) : null,
@@ -137,7 +141,8 @@ class ControllerStockSale extends Controller
         }
 
         $isMultiSale = isset($sale['is_multi_sale']) ? (int)$sale['is_multi_sale'] === 1 : false;
-        $selectedSaleDate = (!empty($sale['sale_date']) && $sale['sale_date'] !== '0000-00-00') ? $sale['sale_date'] : '';
+        $noSaleDateValue = $this->getNoSaleDateValue();
+        $selectedSaleDate = (!empty($sale['sale_date']) && $sale['sale_date'] !== $noSaleDateValue) ? $sale['sale_date'] : '';
 
         $sources = $this->fetchSources();
         $sourceMap = $this->mapSources($sources);
@@ -162,7 +167,7 @@ class ControllerStockSale extends Controller
                 'product_name' => $row['product_name'] ? $row['product_name'] : 'Товар',
                 'product_model' => $row['product_model'] ? $row['product_model'] : '',
                 'order_date' => $row['order_date'],
-                'sale_date' => (!empty($sale['sale_date']) && $sale['sale_date'] !== '0000-00-00') ? $sale['sale_date'] : '',
+                'sale_date' => (!empty($sale['sale_date']) && $sale['sale_date'] !== $noSaleDateValue) ? $sale['sale_date'] : '',
                 'source_id' => $row['source_id'] !== null ? (int)$row['source_id'] : null,
                 'order_status' => $row['order_status'] !== null ? $row['order_status'] : '',
                 'task_number' => $row['task_number'] !== null ? $row['task_number'] : '',
@@ -222,7 +227,7 @@ class ControllerStockSale extends Controller
             if (!$errors) {
                 $saleDate = !empty($saleDates) ? $saleDates[0] : null;
                 $this->db->query('UPDATE sales SET sale_date = :sale_date, is_multi_sale = :is_multi_sale WHERE id = :id', array(
-                    'sale_date' => $saleDate,
+                    'sale_date' => $this->normalizeSaleDateForStorage($saleDate),
                     'is_multi_sale' => $isMultiSale ? 1 : 0,
                     'id' => $id,
                 ));
@@ -648,6 +653,20 @@ class ControllerStockSale extends Controller
         $saleDatesForResult = array_values(array_unique($saleDatesForResult));
 
         return array($preparedItems, $formItems, $productCounts, array_unique($taskNumbers), array_unique($orderNumbers), $errors, $saleDatesForResult);
+    }
+
+    private function normalizeSaleDateForStorage($saleDate)
+    {
+        if ($saleDate === null || $saleDate === '') {
+            return $this->getNoSaleDateValue();
+        }
+
+        return $saleDate;
+    }
+
+    private function getNoSaleDateValue()
+    {
+        return '0000-00-00';
     }
 
     private function checkStockAvailability(array $formItems, array $productCounts)
