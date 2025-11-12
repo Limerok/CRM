@@ -16,19 +16,31 @@ class ControllerStockSale extends Controller
         $formItems = array();
         $errors = array();
         $success = isset($_GET['success']) ? $_GET['success'] : null;
+        $isMultiSale = false;
+        $selectedSaleDate = date('Y-m-d');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            list($items, $formItems, $productCounts, $taskNumbers, $orderNumbers, $errors) = $this->collectSaleItemsFromRequest($sourceMap);
+            $isMultiSaleInput = isset($_POST['is_multi_sale']) ? $_POST['is_multi_sale'] : 0;
+            if (is_array($isMultiSaleInput)) {
+                $isMultiSaleInput = end($isMultiSaleInput);
+            }
+            $isMultiSale = (string)$isMultiSaleInput === '1';
 
-            if (!$errors) {
+            list($items, $formItems, $productCounts, $taskNumbers, $orderNumbers, $errors, $saleDates) = $this->collectSaleItemsFromRequest($sourceMap, $isMultiSale);
+
+            if (!empty($saleDates)) {
+                $selectedSaleDate = $saleDates[0];
+            }
+
+            if (!$errors && !$isMultiSale) {
                 $taskConflicts = $this->findExistingValues('task_number', $taskNumbers);
                 if ($taskConflicts) {
-                    $errors[] = 'Номера заданий уже используются: ' . implode(', ', $taskConflicts);
+                    $errors[] = 'Номера заданий уже используются: ' . implode(', ', $taskConflicts) . '. Перепроверьте номер.';
                 }
 
                 $orderConflicts = $this->findExistingValues('order_number', $orderNumbers);
                 if ($orderConflicts) {
-                    $errors[] = 'Номера заказов уже используются: ' . implode(', ', $orderConflicts);
+                    $errors[] = 'Номера заказов уже используются: ' . implode(', ', $orderConflicts) . '. Перепроверьте номер.';
                 }
             }
 
@@ -40,8 +52,11 @@ class ControllerStockSale extends Controller
             }
 
             if (!$errors) {
-                $saleDate = date('Y-m-d');
-                $this->db->query('INSERT INTO sales (sale_date) VALUES (:sale_date)', array('sale_date' => $saleDate));
+                $saleDate = !empty($saleDates) ? $saleDates[0] : date('Y-m-d');
+                $this->db->query('INSERT INTO sales (sale_date, is_multi_sale) VALUES (:sale_date, :is_multi_sale)', array(
+                    'sale_date' => $saleDate,
+                    'is_multi_sale' => $isMultiSale ? 1 : 0,
+                ));
                 $saleId = (int)$this->db->lastInsertId();
 
                 foreach ($items as $item) {
@@ -64,6 +79,8 @@ class ControllerStockSale extends Controller
 
                 $success = 'Продажа успешно сохранена.';
                 $formItems = array();
+                $isMultiSale = false;
+                $selectedSaleDate = date('Y-m-d');
             }
         }
 
@@ -85,6 +102,8 @@ class ControllerStockSale extends Controller
             'default_status_id' => $defaultStatusId,
             'default_status_name' => $defaultStatusName,
             'allow_negative_stock' => $allowNegativeStock,
+            'is_multi_sale' => $isMultiSale,
+            'selected_sale_date' => $selectedSaleDate,
             'page_title' => 'Продажа со склада',
             'submit_label' => 'Сохранить продажу',
             'form_action' => admin_url('stock/sale'),
@@ -104,6 +123,9 @@ class ControllerStockSale extends Controller
         if (!$sale) {
             redirect(admin_url('stock/sale'));
         }
+
+        $isMultiSale = isset($sale['is_multi_sale']) ? (int)$sale['is_multi_sale'] === 1 : false;
+        $selectedSaleDate = isset($sale['sale_date']) ? $sale['sale_date'] : date('Y-m-d');
 
         $sources = $this->fetchSources();
         $sourceMap = $this->mapSources($sources);
@@ -128,6 +150,7 @@ class ControllerStockSale extends Controller
                 'product_name' => $row['product_name'] ? $row['product_name'] : 'Товар',
                 'product_model' => $row['product_model'] ? $row['product_model'] : '',
                 'order_date' => $row['order_date'],
+                'sale_date' => $sale['sale_date'],
                 'source_id' => $row['source_id'] !== null ? (int)$row['source_id'] : null,
                 'order_status' => $row['order_status'] !== null ? $row['order_status'] : '',
                 'task_number' => $row['task_number'] !== null ? $row['task_number'] : '',
@@ -141,17 +164,27 @@ class ControllerStockSale extends Controller
         $success = isset($_GET['success']) ? $_GET['success'] : null;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            list($items, $formItems, $productCounts, $taskNumbers, $orderNumbers, $errors) = $this->collectSaleItemsFromRequest($sourceMap);
+            $isMultiSaleInput = isset($_POST['is_multi_sale']) ? $_POST['is_multi_sale'] : ($isMultiSale ? '1' : '0');
+            if (is_array($isMultiSaleInput)) {
+                $isMultiSaleInput = end($isMultiSaleInput);
+            }
+            $isMultiSale = (string)$isMultiSaleInput === '1';
 
-            if (!$errors) {
+            list($items, $formItems, $productCounts, $taskNumbers, $orderNumbers, $errors, $saleDates) = $this->collectSaleItemsFromRequest($sourceMap, $isMultiSale);
+
+            if (!empty($saleDates)) {
+                $selectedSaleDate = $saleDates[0];
+            }
+
+            if (!$errors && !$isMultiSale) {
                 $taskConflicts = $this->findExistingValues('task_number', $taskNumbers, $id);
                 if ($taskConflicts) {
-                    $errors[] = 'Номера заданий уже используются: ' . implode(', ', $taskConflicts);
+                    $errors[] = 'Номера заданий уже используются: ' . implode(', ', $taskConflicts) . '. Перепроверьте номер.';
                 }
 
                 $orderConflicts = $this->findExistingValues('order_number', $orderNumbers, $id);
                 if ($orderConflicts) {
-                    $errors[] = 'Номера заказов уже используются: ' . implode(', ', $orderConflicts);
+                    $errors[] = 'Номера заказов уже используются: ' . implode(', ', $orderConflicts) . '. Перепроверьте номер.';
                 }
             }
 
@@ -173,6 +206,13 @@ class ControllerStockSale extends Controller
             }
 
             if (!$errors) {
+                $saleDate = !empty($saleDates) ? $saleDates[0] : $selectedSaleDate;
+                $this->db->query('UPDATE sales SET sale_date = :sale_date, is_multi_sale = :is_multi_sale WHERE id = :id', array(
+                    'sale_date' => $saleDate,
+                    'is_multi_sale' => $isMultiSale ? 1 : 0,
+                    'id' => $id,
+                ));
+
                 $this->db->query('DELETE FROM sale_items WHERE sale_id = :sale_id', array('sale_id' => $id));
 
                 foreach ($items as $item) {
@@ -210,6 +250,8 @@ class ControllerStockSale extends Controller
             'default_status_id' => $defaultStatusId,
             'default_status_name' => $defaultStatusName,
             'allow_negative_stock' => $allowNegativeStock,
+            'is_multi_sale' => $isMultiSale,
+            'selected_sale_date' => $selectedSaleDate,
             'page_title' => 'Редактирование продажи #' . $id,
             'submit_label' => 'Обновить продажу',
             'form_action' => admin_url('stock/sale', array('action' => 'edit', 'id' => $id)),
@@ -334,10 +376,11 @@ class ControllerStockSale extends Controller
         return '';
     }
 
-    private function collectSaleItemsFromRequest(array $sourceMap)
+    private function collectSaleItemsFromRequest(array $sourceMap, $isMultiSale = false)
     {
         $productIds = isset($_POST['product_ids']) ? $_POST['product_ids'] : array();
         $orderDates = isset($_POST['order_dates']) ? $_POST['order_dates'] : array();
+        $saleDates = isset($_POST['sale_dates']) ? $_POST['sale_dates'] : array();
         $sourceIds = isset($_POST['source_ids']) ? $_POST['source_ids'] : array();
         $orderStatuses = isset($_POST['order_statuses']) ? $_POST['order_statuses'] : array();
         $taskNumbersInput = isset($_POST['task_numbers']) ? $_POST['task_numbers'] : array();
@@ -348,6 +391,7 @@ class ControllerStockSale extends Controller
         $rowCount = max(
             count($productIds),
             count($orderDates),
+            count($saleDates),
             count($sourceIds),
             count($orderStatuses),
             count($taskNumbersInput),
@@ -363,6 +407,7 @@ class ControllerStockSale extends Controller
         for ($i = 0; $i < $rowCount; $i++) {
             $productId = isset($productIds[$i]) ? (int)$productIds[$i] : 0;
             $orderDate = isset($orderDates[$i]) ? trim($orderDates[$i]) : '';
+            $saleDate = isset($saleDates[$i]) ? trim($saleDates[$i]) : '';
             $sourceValue = isset($sourceIds[$i]) ? trim($sourceIds[$i]) : '';
             $status = isset($orderStatuses[$i]) ? trim($orderStatuses[$i]) : '';
             $taskNumber = isset($taskNumbersInput[$i]) ? trim($taskNumbersInput[$i]) : '';
@@ -370,7 +415,7 @@ class ControllerStockSale extends Controller
             $sellerPriceInput = isset($sellerPricesInput[$i]) ? trim($sellerPricesInput[$i]) : '';
             $sourceSalePriceInput = isset($sourceSalePricesInput[$i]) ? trim($sourceSalePricesInput[$i]) : '';
 
-            if ($productId <= 0 && $orderDate === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '' && $sellerPriceInput === '' && $sourceSalePriceInput === '') {
+            if ($productId <= 0 && $orderDate === '' && $saleDate === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '' && $sellerPriceInput === '' && $sourceSalePriceInput === '') {
                 continue;
             }
 
@@ -397,6 +442,17 @@ class ControllerStockSale extends Controller
                 $date = DateTime::createFromFormat('Y-m-d', $orderDate);
                 if (!$date || $date->format('Y-m-d') !== $orderDate) {
                     $errors[] = 'Укажите корректную дату заказа.';
+                    $isValid = false;
+                }
+            }
+
+            if ($saleDate === '') {
+                $errors[] = 'Укажите дату продажи для каждой позиции.';
+                $isValid = false;
+            } else {
+                $saleDateObject = DateTime::createFromFormat('Y-m-d', $saleDate);
+                if (!$saleDateObject || $saleDateObject->format('Y-m-d') !== $saleDate) {
+                    $errors[] = 'Укажите корректную дату продажи.';
                     $isValid = false;
                 }
             }
@@ -432,6 +488,7 @@ class ControllerStockSale extends Controller
             $rawRows[] = array(
                 'product_id' => $productId,
                 'order_date' => $orderDate,
+                'sale_date' => $saleDate,
                 'source_id' => $sourceId,
                 'order_status' => $status,
                 'task_number' => $taskNumber,
@@ -446,6 +503,7 @@ class ControllerStockSale extends Controller
                 $preparedItems[] = array(
                     'product_id' => $productId,
                     'order_date' => $orderDate,
+                    'sale_date' => $saleDate,
                     'source_id' => $sourceId,
                     'order_status' => $status !== '' ? $status : null,
                     'task_number' => $taskNumber !== '' ? $taskNumber : null,
@@ -497,6 +555,7 @@ class ControllerStockSale extends Controller
                 'product_name' => $product ? $product['name'] : 'Товар',
                 'product_model' => $product ? $product['model'] : '',
                 'order_date' => $row['order_date'],
+                'sale_date' => $row['sale_date'],
                 'source_id' => $row['source_id'],
                 'order_status' => $row['order_status'],
                 'task_number' => $row['task_number'],
@@ -532,23 +591,49 @@ class ControllerStockSale extends Controller
             }
         }
 
-        $taskDuplicates = array_count_values($taskNumbers);
-        foreach ($taskDuplicates as $value => $count) {
-            if ($count > 1) {
-                $errors[] = 'Номера заданий должны быть уникальными.';
-                break;
+        $saleDateValues = array();
+        foreach ($preparedItems as $item) {
+            if (!empty($item['sale_date'])) {
+                $saleDateValues[] = $item['sale_date'];
+            }
+        }
+        $saleDateValues = array_values(array_unique($saleDateValues));
+
+        if (!$isMultiSale && count($preparedItems) > 1) {
+            $errors[] = 'Для одиночной продажи можно добавить только один товар.';
+        }
+
+        if (count($saleDateValues) > 1) {
+            $errors[] = 'Дата продажи должна быть одинаковой для всех товаров.';
+        }
+
+        if (!$isMultiSale) {
+            $taskDuplicates = array_count_values($taskNumbers);
+            foreach ($taskDuplicates as $value => $count) {
+                if ($count > 1) {
+                    $errors[] = 'Номера заданий должны быть уникальными.';
+                    break;
+                }
+            }
+
+            $orderDuplicates = array_count_values($orderNumbers);
+            foreach ($orderDuplicates as $value => $count) {
+                if ($count > 1) {
+                    $errors[] = 'Номера заказов должны быть уникальными.';
+                    break;
+                }
             }
         }
 
-        $orderDuplicates = array_count_values($orderNumbers);
-        foreach ($orderDuplicates as $value => $count) {
-            if ($count > 1) {
-                $errors[] = 'Номера заказов должны быть уникальными.';
-                break;
+        $saleDatesForResult = array();
+        foreach ($rawRows as $row) {
+            if (!empty($row['sale_date'])) {
+                $saleDatesForResult[] = $row['sale_date'];
             }
         }
+        $saleDatesForResult = array_values(array_unique($saleDatesForResult));
 
-        return array($preparedItems, $formItems, $productCounts, array_unique($taskNumbers), array_unique($orderNumbers), $errors);
+        return array($preparedItems, $formItems, $productCounts, array_unique($taskNumbers), array_unique($orderNumbers), $errors, $saleDatesForResult);
     }
 
     private function checkStockAvailability(array $formItems, array $productCounts)
