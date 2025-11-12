@@ -29,7 +29,7 @@
         $statuses = isset($statuses) && is_array($statuses) ? $statuses : array();
         $defaultStatusName = isset($default_status_name) ? $default_status_name : '';
         $isMultiSale = !empty($is_multi_sale);
-        $selectedSaleDate = isset($selected_sale_date) && $selected_sale_date !== '' ? $selected_sale_date : date('Y-m-d');
+        $selectedSaleDate = (isset($selected_sale_date) && $selected_sale_date !== null && $selected_sale_date !== '0000-00-00') ? (string)$selected_sale_date : '';
     ?>
     <form method="post" action="<?= htmlspecialchars(isset($form_action) ? $form_action : admin_url('stock/sale')); ?>" id="sale-form">
         <input type="hidden" name="is_multi_sale" value="0">
@@ -45,7 +45,8 @@
                         $statusMatched = false;
                         $sellerPriceValue = isset($item['seller_price']) && $item['seller_price'] !== null ? number_format((float)$item['seller_price'], 2, '.', '') : '';
                         $sourceSalePriceValue = isset($item['source_sale_price']) && $item['source_sale_price'] !== null ? number_format((float)$item['source_sale_price'], 2, '.', '') : '';
-                        $saleDateValue = isset($item['sale_date']) && $item['sale_date'] !== '' ? $item['sale_date'] : $selectedSaleDate;
+                        $hasSaleDate = isset($item['sale_date']) && $item['sale_date'] !== null && $item['sale_date'] !== '';
+                        $saleDateValue = $hasSaleDate ? $item['sale_date'] : $selectedSaleDate;
                     ?>
                     <div class="sale-item border rounded p-3">
                         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -63,7 +64,7 @@
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Дата продажи</label>
-                                <input type="date" class="form-control" name="sale_dates[]" value="<?= htmlspecialchars($saleDateValue); ?>" required>
+                                <input type="date" class="form-control" name="sale_dates[]" value="<?= htmlspecialchars($saleDateValue); ?>">
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Источник</label>
@@ -191,51 +192,154 @@
             <button type="submit" class="btn btn-success"><?= htmlspecialchars(isset($submit_label) ? $submit_label : 'Сохранить продажу'); ?></button>
         </div>
         <?php if (isset($recent_sales)): ?>
+        <?php
+            $recentSalesItems = is_array($recent_sales) ? $recent_sales : array();
+            $recentProductHints = array();
+            $recentSourceHints = array();
+            $recentTaskHints = array();
+            foreach ($recentSalesItems as $recentSaleRow) {
+                $hintProductName = isset($recentSaleRow['product_name']) ? trim($recentSaleRow['product_name']) : '';
+                $hintProductModel = isset($recentSaleRow['product_model']) ? trim($recentSaleRow['product_model']) : '';
+                $hintProductTitle = trim($hintProductName . ($hintProductModel ? ' (' . $hintProductModel . ')' : ''));
+                if ($hintProductTitle !== '') {
+                    $recentProductHints[$hintProductTitle] = true;
+                }
+
+                $hintSource = isset($recentSaleRow['source_name']) ? trim($recentSaleRow['source_name']) : '';
+                if ($hintSource !== '') {
+                    $recentSourceHints[$hintSource] = true;
+                }
+
+                $hintTask = isset($recentSaleRow['task_number']) ? trim($recentSaleRow['task_number']) : '';
+                if ($hintTask !== '') {
+                    $recentTaskHints[$hintTask] = true;
+                }
+            }
+            $recentProductHints = array_keys($recentProductHints);
+            sort($recentProductHints, SORT_NATURAL | SORT_FLAG_CASE);
+            $recentSourceHints = array_keys($recentSourceHints);
+            sort($recentSourceHints, SORT_NATURAL | SORT_FLAG_CASE);
+            $recentTaskHints = array_keys($recentTaskHints);
+            sort($recentTaskHints, SORT_NATURAL | SORT_FLAG_CASE);
+        ?>
         <div>
             <h5 class="mb-3">Последние продажи</h5>
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Дата продажи</th>
-                            <th>Позиций</th>
-                            <th>Создано</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (!empty($recent_sales)): ?>
-                        <?php foreach ($recent_sales as $saleItem): ?>
+            <?php if (!empty($recentSalesItems)): ?>
+                <div class="bg-light border rounded p-3 mb-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label">Товар</label>
+                            <input type="text" class="form-control form-control-sm" id="recent-filter-product" placeholder="Введите название" list="recent-products-list">
+                            <datalist id="recent-products-list">
+                                <?php foreach ($recentProductHints as $hint): ?>
+                                    <option value="<?= htmlspecialchars($hint); ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label">Источник</label>
+                            <input type="text" class="form-control form-control-sm" id="recent-filter-source" placeholder="Источник" list="recent-sources-list">
+                            <datalist id="recent-sources-list">
+                                <?php foreach ($recentSourceHints as $hint): ?>
+                                    <option value="<?= htmlspecialchars($hint); ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label">№ задания</label>
+                            <input type="text" class="form-control form-control-sm" id="recent-filter-task" placeholder="№ задания" list="recent-tasks-list">
+                            <datalist id="recent-tasks-list">
+                                <?php foreach ($recentTaskHints as $hint): ?>
+                                    <option value="<?= htmlspecialchars($hint); ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label">Дата заказа с</label>
+                            <input type="date" class="form-control form-control-sm" id="recent-filter-order-from">
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label">Дата заказа по</label>
+                            <input type="date" class="form-control form-control-sm" id="recent-filter-order-to">
+                        </div>
+                        <div class="col-12 col-lg-1 d-grid">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="recent-filter-reset">Сбросить</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0" id="recent-sales-table">
+                        <thead>
                             <tr>
-                                <td><?= (int)$saleItem['id']; ?></td>
-                                <td><?= htmlspecialchars($saleItem['sale_date']); ?></td>
-                                <td><?= (int)$saleItem['items_count']; ?></td>
-                                <td><?= htmlspecialchars($saleItem['created_at']); ?></td>
+                                <th>#</th>
+                                <th>Товар</th>
+                                <th class="sortable" data-sort-key="source">Источник</th>
+                                <th>№ задания</th>
+                                <th class="sortable" data-sort-key="order_date">Дата заказа</th>
+                                <th class="sortable" data-sort-key="sale_date">Дата продажи</th>
+                                <th class="text-end">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($recentSalesItems as $saleItem): ?>
+                            <?php
+                                $productName = isset($saleItem['product_name']) ? trim($saleItem['product_name']) : '';
+                $productModel = isset($saleItem['product_model']) ? trim($saleItem['product_model']) : '';
+                                $productTitle = trim($productName . ($productModel ? ' (' . $productModel . ')' : ''));
+                                if ($productTitle === '') {
+                                    $productTitle = 'Товар #' . (int)$saleItem['sale_id'];
+                                }
+                                $sourceValue = isset($saleItem['source_name']) ? trim($saleItem['source_name']) : '';
+                                $sourceDisplay = $sourceValue !== '' ? $sourceValue : '—';
+                                $taskValue = isset($saleItem['task_number']) ? trim($saleItem['task_number']) : '';
+                                $taskDisplay = $taskValue !== '' ? $taskValue : '—';
+                                $orderDateValue = isset($saleItem['order_date']) ? trim($saleItem['order_date']) : '';
+                                $orderDateDisplay = ($orderDateValue !== '' && $orderDateValue !== '0000-00-00') ? $orderDateValue : '—';
+                                if ($orderDateDisplay === '—') {
+                                    $orderDateValue = '';
+                                }
+                                $saleDateValue = isset($saleItem['sale_date']) ? trim($saleItem['sale_date']) : '';
+                                $saleDateDisplay = ($saleDateValue !== '' && $saleDateValue !== '0000-00-00') ? $saleDateValue : '—';
+                                if ($saleDateDisplay === '—') {
+                                    $saleDateValue = '';
+                                }
+                            ?>
+                            <tr
+                                data-sale-id="<?= (int)$saleItem['sale_id']; ?>"
+                                data-product="<?= htmlspecialchars($productTitle, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-source="<?= htmlspecialchars($sourceValue, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-task="<?= htmlspecialchars($taskValue, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-order-date="<?= htmlspecialchars($orderDateValue, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-sale-date="<?= htmlspecialchars($saleDateValue, ENT_QUOTES, 'UTF-8'); ?>"
+                            >
+                                <td><?= (int)$saleItem['sale_id']; ?></td>
+                                <td><?= htmlspecialchars($productTitle); ?></td>
+                                <td><?= htmlspecialchars($sourceDisplay); ?></td>
+                                <td><?= htmlspecialchars($taskDisplay); ?></td>
+                                <td><?= htmlspecialchars($orderDateDisplay); ?></td>
+                                <td><?= htmlspecialchars($saleDateDisplay); ?></td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="<?= admin_url('stock/sale', array('action' => 'view', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-secondary">Подробнее</a>
-                                        <a href="<?= admin_url('stock/sale', array('action' => 'edit', 'id' => $saleItem['id'])); ?>" class="btn btn-outline-primary">Редактировать</a>
+                                        <a href="<?= admin_url('stock/sale', array('action' => 'view', 'id' => $saleItem['sale_id'])); ?>" class="btn btn-outline-secondary">Подробнее</a>
+                                        <a href="<?= admin_url('stock/sale', array('action' => 'edit', 'id' => $saleItem['sale_id'])); ?>" class="btn btn-outline-primary">Редактировать</a>
                                         <button type="submit"
                                             class="btn btn-outline-danger"
                                             formaction="<?= admin_url('stock/sale', array('action' => 'delete')); ?>"
                                             formmethod="post"
                                             name="sale_id"
-                                            value="<?= (int)$saleItem['id']; ?>"
+                                            value="<?= (int)$saleItem['sale_id']; ?>"
                                             formnovalidate
-                                            onclick="return confirm('Удалить продажу #<?= (int)$saleItem['id']; ?>?');">Удалить</button>
+                                            onclick="return confirm('Удалить продажу #<?= (int)$saleItem['sale_id']; ?>?');">Удалить</button>
                                     </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="5" class="text-center">Продажи ещё не зафиксированы</td>
-                        </tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-light border">Продажи ещё не зафиксированы.</div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </form>
@@ -273,6 +377,13 @@ let saleSelectedProduct = null;
 const saleSources = <?= json_encode($sourcesForJs, JSON_UNESCAPED_UNICODE); ?>;
 const saleStatuses = <?= json_encode($statusesForJs, JSON_UNESCAPED_UNICODE); ?>;
 const saleDefaultStatus = <?= json_encode($defaultStatusForJs, JSON_UNESCAPED_UNICODE); ?>;
+const recentSalesTable = document.getElementById('recent-sales-table');
+const recentProductFilter = document.getElementById('recent-filter-product');
+const recentSourceFilter = document.getElementById('recent-filter-source');
+const recentTaskFilter = document.getElementById('recent-filter-task');
+const recentOrderFromFilter = document.getElementById('recent-filter-order-from');
+const recentOrderToFilter = document.getElementById('recent-filter-order-to');
+const recentResetFilters = document.getElementById('recent-filter-reset');
 
 function escapeHtml(value) {
     return String(value)
@@ -374,11 +485,6 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
     }
 
     const saleDate = saleNewSaleDate ? saleNewSaleDate.value : '';
-    if (!saleDate) {
-        alert('Укажите дату продажи.');
-        return;
-    }
-
     const statusValue = saleNewStatus.value;
     const taskValue = saleNewTask.value.trim();
     const orderValue = saleNewOrder.value.trim();
@@ -404,7 +510,7 @@ document.getElementById('sale-add-product').addEventListener('click', () => {
             </div>
             <div class="col-12 col-md-4">
                 <label class="form-label">Дата продажи</label>
-                <input type="date" class="form-control" name="sale_dates[]" value="${escapeHtml(saleDate)}" required>
+                <input type="date" class="form-control" name="sale_dates[]" value="${escapeHtml(saleDate)}">
             </div>
             <div class="col-12 col-md-4">
                 <label class="form-label">Источник</label>
@@ -476,6 +582,179 @@ if (saleMultiSale) {
             }
         }
     });
+}
+
+if (recentSalesTable) {
+    const recentTbody = recentSalesTable.querySelector('tbody');
+    const recentSortHeaders = recentSalesTable.querySelectorAll('thead th[data-sort-key]');
+    let recentRows = Array.from(recentTbody.querySelectorAll('tr'));
+    let recentSortState = { key: null, direction: 'asc' };
+
+    function normalizeFilterValue(value) {
+        return value ? String(value).trim().toLowerCase() : '';
+    }
+
+    function applyRecentFilters() {
+        const productTerm = normalizeFilterValue(recentProductFilter ? recentProductFilter.value : '');
+        const sourceTerm = normalizeFilterValue(recentSourceFilter ? recentSourceFilter.value : '');
+        const taskTerm = normalizeFilterValue(recentTaskFilter ? recentTaskFilter.value : '');
+        const orderFrom = recentOrderFromFilter ? recentOrderFromFilter.value : '';
+        const orderTo = recentOrderToFilter ? recentOrderToFilter.value : '';
+
+        recentRows.forEach((row) => {
+            const productData = normalizeFilterValue(row.dataset.product || '');
+            const sourceData = normalizeFilterValue(row.dataset.source || '');
+            const taskData = normalizeFilterValue(row.dataset.task || '');
+            const orderDate = row.dataset.orderDate || '';
+
+            let visible = true;
+
+            if (productTerm && !productData.includes(productTerm)) {
+                visible = false;
+            }
+
+            if (visible && sourceTerm && !sourceData.includes(sourceTerm)) {
+                visible = false;
+            }
+
+            if (visible && taskTerm && !taskData.includes(taskTerm)) {
+                visible = false;
+            }
+
+            if (visible && orderFrom && (orderDate === '' || orderDate < orderFrom)) {
+                visible = false;
+            }
+
+            if (visible && orderTo && (orderDate === '' || orderDate > orderTo)) {
+                visible = false;
+            }
+
+            row.classList.toggle('d-none', !visible);
+        });
+    }
+
+    function getSortValue(row, key) {
+        switch (key) {
+            case 'source':
+                return normalizeFilterValue(row.dataset.source || '');
+            case 'order_date':
+                return row.dataset.orderDate || '';
+            case 'sale_date':
+                return row.dataset.saleDate || '';
+            default:
+                return '';
+        }
+    }
+
+    function compareSortValues(aValue, bValue, direction) {
+        const isEmptyA = aValue === '' || aValue === null;
+        const isEmptyB = bValue === '' || bValue === null;
+        if (isEmptyA && isEmptyB) {
+            return 0;
+        }
+        if (isEmptyA) {
+            return direction === 'asc' ? 1 : -1;
+        }
+        if (isEmptyB) {
+            return direction === 'asc' ? -1 : 1;
+        }
+        if (aValue < bValue) {
+            return direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    }
+
+    function sortRecentRows(key, direction) {
+        if (!key) {
+            return;
+        }
+
+        const normalizedDirection = direction === 'desc' ? 'desc' : 'asc';
+        const sortedRows = Array.from(recentRows).sort((a, b) => {
+            const aValue = getSortValue(a, key);
+            const bValue = getSortValue(b, key);
+            return compareSortValues(aValue, bValue, normalizedDirection);
+        });
+
+        sortedRows.forEach((row) => {
+            recentTbody.appendChild(row);
+        });
+
+        recentRows = sortedRows;
+    }
+
+    function updateRecentSortIndicators() {
+        recentSortHeaders.forEach((header) => {
+            const headerKey = header.dataset.sortKey;
+            if (recentSortState.key === headerKey) {
+                header.setAttribute('data-sort-direction', recentSortState.direction);
+                header.setAttribute('aria-sort', recentSortState.direction === 'asc' ? 'ascending' : 'descending');
+            } else {
+                header.removeAttribute('data-sort-direction');
+                header.removeAttribute('aria-sort');
+            }
+        });
+    }
+
+    const filterInputs = [recentProductFilter, recentSourceFilter, recentTaskFilter];
+    filterInputs.forEach((input) => {
+        if (input) {
+            input.addEventListener('input', applyRecentFilters);
+        }
+    });
+
+    const dateInputs = [recentOrderFromFilter, recentOrderToFilter];
+    dateInputs.forEach((input) => {
+        if (input) {
+            input.addEventListener('change', applyRecentFilters);
+        }
+    });
+
+    if (recentResetFilters) {
+        recentResetFilters.addEventListener('click', () => {
+            if (recentProductFilter) {
+                recentProductFilter.value = '';
+            }
+            if (recentSourceFilter) {
+                recentSourceFilter.value = '';
+            }
+            if (recentTaskFilter) {
+                recentTaskFilter.value = '';
+            }
+            if (recentOrderFromFilter) {
+                recentOrderFromFilter.value = '';
+            }
+            if (recentOrderToFilter) {
+                recentOrderToFilter.value = '';
+            }
+            applyRecentFilters();
+        });
+    }
+
+    recentSortHeaders.forEach((header) => {
+        header.addEventListener('click', () => {
+            const key = header.dataset.sortKey;
+            if (!key) {
+                return;
+            }
+
+            let direction = 'asc';
+            if (recentSortState.key === key) {
+                direction = recentSortState.direction === 'asc' ? 'desc' : 'asc';
+            }
+
+            recentSortState = { key, direction };
+            sortRecentRows(key, direction);
+            updateRecentSortIndicators();
+            applyRecentFilters();
+        });
+    });
+
+    applyRecentFilters();
+    updateRecentSortIndicators();
 }
 </script>
 

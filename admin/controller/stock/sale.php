@@ -17,7 +17,7 @@ class ControllerStockSale extends Controller
         $errors = array();
         $success = isset($_GET['success']) ? $_GET['success'] : null;
         $isMultiSale = false;
-        $selectedSaleDate = date('Y-m-d');
+        $selectedSaleDate = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isMultiSaleInput = isset($_POST['is_multi_sale']) ? $_POST['is_multi_sale'] : 0;
@@ -30,6 +30,8 @@ class ControllerStockSale extends Controller
 
             if (!empty($saleDates)) {
                 $selectedSaleDate = $saleDates[0];
+            } else {
+                $selectedSaleDate = '';
             }
 
             if (!$errors && !$isMultiSale) {
@@ -52,9 +54,9 @@ class ControllerStockSale extends Controller
             }
 
             if (!$errors) {
-                $saleDate = !empty($saleDates) ? $saleDates[0] : date('Y-m-d');
+                $saleDate = !empty($saleDates) ? $saleDates[0] : null;
                 $this->db->query('INSERT INTO sales (sale_date, is_multi_sale) VALUES (:sale_date, :is_multi_sale)', array(
-                    'sale_date' => $saleDate,
+                    'sale_date' => $this->normalizeSaleDateForStorage($saleDate),
                     'is_multi_sale' => $isMultiSale ? 1 : 0,
                 ));
                 $saleId = (int)$this->db->lastInsertId();
@@ -80,16 +82,30 @@ class ControllerStockSale extends Controller
                 $success = 'Продажа успешно сохранена.';
                 $formItems = array();
                 $isMultiSale = false;
-                $selectedSaleDate = date('Y-m-d');
+                $selectedSaleDate = '';
             }
         }
 
-        $recentSales = $this->db->fetchAll('SELECT s.*, COUNT(i.id) AS items_count
-            FROM sales s
-            LEFT JOIN sale_items i ON s.id = i.sale_id
-            GROUP BY s.id
-            ORDER BY s.sale_date DESC, s.id DESC
-            LIMIT 10');
+        $noSaleDateValue = $this->getNoSaleDateValue();
+
+        $recentSales = $this->db->fetchAll('SELECT
+                s.id AS sale_id,
+                si.id AS item_id,
+                s.sale_date,
+                s.created_at,
+                p.name AS product_name,
+                p.model AS product_model,
+                os.name AS source_name,
+                si.task_number,
+                si.order_date
+            FROM sale_items si
+            INNER JOIN sales s ON si.sale_id = s.id
+            LEFT JOIN products p ON si.product_id = p.id
+            LEFT JOIN order_sources os ON si.source_id = os.id
+            ORDER BY (s.sale_date = :no_sale_date), s.sale_date DESC, s.created_at DESC, si.id DESC
+            LIMIT 10', array(
+                'no_sale_date' => $noSaleDateValue,
+            ));
 
         $this->render('stock/sale_form', array(
             'error' => $errors ? implode(' ', $errors) : null,
@@ -125,7 +141,8 @@ class ControllerStockSale extends Controller
         }
 
         $isMultiSale = isset($sale['is_multi_sale']) ? (int)$sale['is_multi_sale'] === 1 : false;
-        $selectedSaleDate = isset($sale['sale_date']) ? $sale['sale_date'] : date('Y-m-d');
+        $noSaleDateValue = $this->getNoSaleDateValue();
+        $selectedSaleDate = (!empty($sale['sale_date']) && $sale['sale_date'] !== $noSaleDateValue) ? $sale['sale_date'] : '';
 
         $sources = $this->fetchSources();
         $sourceMap = $this->mapSources($sources);
@@ -150,7 +167,7 @@ class ControllerStockSale extends Controller
                 'product_name' => $row['product_name'] ? $row['product_name'] : 'Товар',
                 'product_model' => $row['product_model'] ? $row['product_model'] : '',
                 'order_date' => $row['order_date'],
-                'sale_date' => $sale['sale_date'],
+                'sale_date' => (!empty($sale['sale_date']) && $sale['sale_date'] !== $noSaleDateValue) ? $sale['sale_date'] : '',
                 'source_id' => $row['source_id'] !== null ? (int)$row['source_id'] : null,
                 'order_status' => $row['order_status'] !== null ? $row['order_status'] : '',
                 'task_number' => $row['task_number'] !== null ? $row['task_number'] : '',
@@ -174,6 +191,8 @@ class ControllerStockSale extends Controller
 
             if (!empty($saleDates)) {
                 $selectedSaleDate = $saleDates[0];
+            } else {
+                $selectedSaleDate = '';
             }
 
             if (!$errors && !$isMultiSale) {
@@ -206,9 +225,9 @@ class ControllerStockSale extends Controller
             }
 
             if (!$errors) {
-                $saleDate = !empty($saleDates) ? $saleDates[0] : $selectedSaleDate;
+                $saleDate = !empty($saleDates) ? $saleDates[0] : null;
                 $this->db->query('UPDATE sales SET sale_date = :sale_date, is_multi_sale = :is_multi_sale WHERE id = :id', array(
-                    'sale_date' => $saleDate,
+                    'sale_date' => $this->normalizeSaleDateForStorage($saleDate),
                     'is_multi_sale' => $isMultiSale ? 1 : 0,
                     'id' => $id,
                 ));
@@ -407,7 +426,7 @@ class ControllerStockSale extends Controller
         for ($i = 0; $i < $rowCount; $i++) {
             $productId = isset($productIds[$i]) ? (int)$productIds[$i] : 0;
             $orderDate = isset($orderDates[$i]) ? trim($orderDates[$i]) : '';
-            $saleDate = isset($saleDates[$i]) ? trim($saleDates[$i]) : '';
+            $saleDateInput = isset($saleDates[$i]) ? trim($saleDates[$i]) : '';
             $sourceValue = isset($sourceIds[$i]) ? trim($sourceIds[$i]) : '';
             $status = isset($orderStatuses[$i]) ? trim($orderStatuses[$i]) : '';
             $taskNumber = isset($taskNumbersInput[$i]) ? trim($taskNumbersInput[$i]) : '';
@@ -415,7 +434,7 @@ class ControllerStockSale extends Controller
             $sellerPriceInput = isset($sellerPricesInput[$i]) ? trim($sellerPricesInput[$i]) : '';
             $sourceSalePriceInput = isset($sourceSalePricesInput[$i]) ? trim($sourceSalePricesInput[$i]) : '';
 
-            if ($productId <= 0 && $orderDate === '' && $saleDate === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '' && $sellerPriceInput === '' && $sourceSalePriceInput === '') {
+            if ($productId <= 0 && $orderDate === '' && $saleDateInput === '' && $sourceValue === '' && $status === '' && $taskNumber === '' && $orderNumber === '' && $sellerPriceInput === '' && $sourceSalePriceInput === '') {
                 continue;
             }
 
@@ -446,14 +465,14 @@ class ControllerStockSale extends Controller
                 }
             }
 
-            if ($saleDate === '') {
-                $errors[] = 'Укажите дату продажи для каждой позиции.';
-                $isValid = false;
-            } else {
-                $saleDateObject = DateTime::createFromFormat('Y-m-d', $saleDate);
-                if (!$saleDateObject || $saleDateObject->format('Y-m-d') !== $saleDate) {
+            $saleDateValue = null;
+            if ($saleDateInput !== '') {
+                $saleDateObject = DateTime::createFromFormat('Y-m-d', $saleDateInput);
+                if (!$saleDateObject || $saleDateObject->format('Y-m-d') !== $saleDateInput) {
                     $errors[] = 'Укажите корректную дату продажи.';
                     $isValid = false;
+                } else {
+                    $saleDateValue = $saleDateObject->format('Y-m-d');
                 }
             }
 
@@ -488,7 +507,7 @@ class ControllerStockSale extends Controller
             $rawRows[] = array(
                 'product_id' => $productId,
                 'order_date' => $orderDate,
-                'sale_date' => $saleDate,
+                'sale_date' => $saleDateInput,
                 'source_id' => $sourceId,
                 'order_status' => $status,
                 'task_number' => $taskNumber,
@@ -503,7 +522,7 @@ class ControllerStockSale extends Controller
                 $preparedItems[] = array(
                     'product_id' => $productId,
                     'order_date' => $orderDate,
-                    'sale_date' => $saleDate,
+                    'sale_date' => $saleDateValue,
                     'source_id' => $sourceId,
                     'order_status' => $status !== '' ? $status : null,
                     'task_number' => $taskNumber !== '' ? $taskNumber : null,
@@ -634,6 +653,20 @@ class ControllerStockSale extends Controller
         $saleDatesForResult = array_values(array_unique($saleDatesForResult));
 
         return array($preparedItems, $formItems, $productCounts, array_unique($taskNumbers), array_unique($orderNumbers), $errors, $saleDatesForResult);
+    }
+
+    private function normalizeSaleDateForStorage($saleDate)
+    {
+        if ($saleDate === null || $saleDate === '') {
+            return $this->getNoSaleDateValue();
+        }
+
+        return $saleDate;
+    }
+
+    private function getNoSaleDateValue()
+    {
+        return '0000-00-00';
     }
 
     private function checkStockAvailability(array $formItems, array $productCounts)
